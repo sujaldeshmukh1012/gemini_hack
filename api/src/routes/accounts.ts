@@ -14,15 +14,13 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
-          console.log("Profile ID:", profile.id);
-          console.log("Display Name:", profile.displayName);
-          console.log("Email:", profile.emails?.[0]?.value);
-          console.log("Photo:", profile.photos?.[0]?.value);
-          console.log("Full Profile:", JSON.stringify(profile, null, 2));
-          console.log("Access Token:", accessToken);
-          console.log("Refresh Token:", refreshToken);
+          const userInfo = {
+            id: profile.id,
+            name: profile.displayName,
+            email: profile.emails?.[0]?.value,
+          };
 
-          return done(null, profile);
+          return done(null, userInfo);
         } catch (error) {
           console.error("Error in Google OAuth callback:", error);
           return done(error as Error, undefined);
@@ -34,6 +32,14 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   console.warn("Google OAuth credentials not found. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env");
 }
 
+passport.serializeUser((user: any, done) => {
+  done(null, user);
+});
+
+passport.deserializeUser((user: any, done) => {
+  done(null, user);
+});
+
 accountsRouter.get(
   "/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
@@ -41,13 +47,29 @@ accountsRouter.get(
 
 accountsRouter.get(
   "/google/callback",
-  passport.authenticate("google", { session: false }),
+  passport.authenticate("google", { failureRedirect: "http://localhost:5173/login" }),
   (req, res) => {
-    res.json({
-      message: "Google OAuth successful",
-      user: req.user,
-    });
+    res.redirect("http://localhost:5173/dashboard");
   }
 );
+
+accountsRouter.get("/me", (req, res) => {
+  if (req.user) {
+    res.json({ user: req.user });
+  } else {
+    res.status(401).json({ error: "Not authenticated" });
+  }
+});
+
+accountsRouter.post("/logout", (req, res) => {
+  req.logout((err) => {
+    if (err) {
+      return res.status(500).json({ error: "Logout failed" });
+    }
+    req.session.destroy(() => {
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+});
 
 export default accountsRouter;

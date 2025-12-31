@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import session from "express-session";
 import passport from "passport";
 import cors from "cors";
 import usersRouter from "./routes/users.js";
@@ -18,7 +19,22 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Initialize Passport
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "learnlens-secret-key-change-in-production",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000,
+      sameSite: "lax",
+    },
+  })
+);
+
+
 app.use(passport.initialize());
 app.use(passport.session());
 
