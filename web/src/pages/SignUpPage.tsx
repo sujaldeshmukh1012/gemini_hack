@@ -1,24 +1,58 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-function LoginPage() {
+function SignUpPage() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement login logic
-    console.log('Login:', { email, password });
+    // TODO: Implement signup logic
+    console.log('Sign up:', { name, email, password });
   };
 
-  const handleGoogleLogin = () => {
+  const handleGoogleSignup = () => {
     window.location.href = 'http://localhost:8000/api/auth/google';
   };
 
   return (
     <div className="min-h-screen bg-surface-50 flex">
-      {/* Left Panel - Form */}
+      {/* Left Panel - Visual */}
+      <div className="hidden lg:flex lg:flex-1 bg-primary-600 items-center justify-center p-12">
+        <div className="max-w-md text-center">
+          <div className="w-20 h-20 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-8">
+            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-semibold text-white mb-4">
+            Start your learning journey
+          </h2>
+          <p className="text-primary-100 leading-relaxed">
+            Join thousands of learners building knowledge through interactive lessons and personalized paths.
+          </p>
+
+          {/* Testimonial */}
+          <div className="mt-12 p-6 bg-white/10 rounded-2xl text-left">
+            <p className="text-white/90 italic leading-relaxed">
+              "LearnHub helped me understand math concepts I'd struggled with for years. The adaptive learning is incredible."
+            </p>
+            <div className="mt-4 flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-medium">SK</span>
+              </div>
+              <div>
+                <div className="text-white font-medium text-sm">Sarah K.</div>
+                <div className="text-primary-200 text-xs">Completed 12 courses</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Panel - Form */}
       <div className="flex-1 flex flex-col justify-center px-6 py-12 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           {/* Back button */}
@@ -42,19 +76,19 @@ function LoginPage() {
 
           {/* Header */}
           <h1 className="text-2xl font-semibold text-surface-900">
-            Welcome back
+            Create your account
           </h1>
           <p className="mt-2 text-surface-600">
-            Sign in to continue your learning journey.
+            Start learning for free. No credit card required.
           </p>
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          {/* Social Login */}
+          {/* Social Signup */}
           <div className="space-y-3">
             <button
               type="button"
-              onClick={handleGoogleLogin}
+              onClick={handleGoogleSignup}
               className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white border border-surface-300 rounded-xl text-surface-700 font-medium hover:bg-surface-50 hover:border-surface-400 shadow-card hover:shadow-card-hover cursor-pointer transition-all duration-150"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -87,6 +121,22 @@ function LoginPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
+              <label htmlFor="name" className="block text-sm font-medium text-surface-700 mb-1.5">
+                Full name
+              </label>
+              <input
+                type="text"
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                autoComplete="name"
+                className="w-full px-4 py-3 bg-white border border-surface-300 rounded-xl text-surface-900 placeholder-surface-400 hover:border-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-inner-soft transition-all duration-150"
+                placeholder="John Doe"
+              />
+            </div>
+
+            <div>
               <label htmlFor="email" className="block text-sm font-medium text-surface-700 mb-1.5">
                 Email address
               </label>
@@ -103,65 +153,44 @@ function LoginPage() {
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label htmlFor="password" className="block text-sm font-medium text-surface-700">
-                  Password
-                </label>
-                <a href="#" className="text-sm text-primary-600 hover:text-primary-700 cursor-pointer transition-colors duration-150">
-                  Forgot password?
-                </a>
-              </div>
+              <label htmlFor="password" className="block text-sm font-medium text-surface-700 mb-1.5">
+                Password
+              </label>
               <input
                 type="password"
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                autoComplete="current-password"
+                autoComplete="new-password"
                 className="w-full px-4 py-3 bg-white border border-surface-300 rounded-xl text-surface-900 placeholder-surface-400 hover:border-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-inner-soft transition-all duration-150"
                 placeholder="••••••••"
               />
+              <p className="mt-1.5 text-xs text-surface-500">Must be at least 8 characters</p>
             </div>
 
             <button
               type="submit"
               className="w-full px-4 py-3 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 shadow-button hover:shadow-elevated cursor-pointer transition-all duration-150"
             >
-              Sign in
+              Create account
             </button>
           </form>
 
-          {/* Sign up link */}
+          {/* Sign in link */}
           <p className="mt-6 text-center text-sm text-surface-600">
-            Don't have an account?{' '}
-            <Link to="/signup" className="font-medium text-primary-600 hover:text-primary-700 cursor-pointer transition-colors duration-150">
-              Create one
+            Already have an account?{' '}
+            <Link to="/login" className="font-medium text-primary-600 hover:text-primary-700 cursor-pointer transition-colors duration-150">
+              Sign in
             </Link>
           </p>
 
           {/* Terms */}
           <p className="mt-8 text-center text-xs text-surface-500 leading-relaxed">
-            By signing in, you agree to our{' '}
+            By creating an account, you agree to our{' '}
             <a href="#" className="underline hover:text-surface-700 cursor-pointer transition-colors duration-150">Terms of Service</a>
             {' '}and{' '}
             <a href="#" className="underline hover:text-surface-700 cursor-pointer transition-colors duration-150">Privacy Policy</a>.
-          </p>
-        </div>
-      </div>
-
-      {/* Right Panel - Visual */}
-      <div className="hidden lg:flex lg:flex-1 bg-primary-600 items-center justify-center p-12">
-        <div className="max-w-md text-center">
-          <div className="w-20 h-20 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-8">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-semibold text-white mb-4">
-            Pick up where you left off
-          </h2>
-          <p className="text-primary-100 leading-relaxed">
-            Your learning progress is saved and waiting. Continue building knowledge at your own pace.
           </p>
         </div>
       </div>
@@ -169,4 +198,4 @@ function LoginPage() {
   );
 }
 
-export default LoginPage;
+export default SignUpPage;

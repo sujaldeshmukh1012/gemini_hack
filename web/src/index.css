@@ -1,1 +1,73 @@
 @import "tailwindcss";
+
+/*
+ * LearnHub Design System
+ * 
+ * Philosophy: Clean, warm, and approachable. 
+ * Inspired by Apple's clarity and Google's functionality.
+ * Every decision is intentional.
+ */
+
+/* Base styles */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #1c1917;
+  background-color: #fafaf9;
+}
+
+/* Focus states for accessibility */
+*:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+
+/* Selection styling */
+::selection {
+  background-color: #e0e7ff;
+  color: #312e81;
+}
+
+/* Scrollbar - subtle and refined */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d6d3d1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a29e;
+}
+
+/* Interactive element base transitions */
+button, a, [role="button"] {
+  transition-property: background-color, border-color, color, box-shadow, transform;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* Ensure clickable elements show pointer */
+button:not(:disabled), 
+a, 
+[role="button"]:not(:disabled) {
+  cursor: pointer;
+}
+
+/* Subtle active state for tactile feedback */
+button:active:not(:disabled),
+[role="button"]:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
