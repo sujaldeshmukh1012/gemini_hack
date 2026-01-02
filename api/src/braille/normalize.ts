@@ -56,4 +56,3 @@ Rewrite the content following the rules above. Return ONLY the rewritten content
     return input;
   }
 }
-

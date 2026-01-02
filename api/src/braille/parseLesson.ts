@@ -18,40 +18,59 @@ export interface MixedBrailleResult {
   success: boolean;
 }
 
+function isMathLine(line: string): boolean {
+  const mathIndicators = [
+    /^[a-zA-Z](_\d+)?\s*=\s*/,
+    /\^[\d\(\{]/,
+    /[±÷×√∞≠≤≥∑∏∫]/,
+    /\[.*\].*\//,
+    /\b(sin|cos|tan|log|ln|sqrt|lim)\s*\(/,
+    /=\s*\[/,
+  ];
+  
+  return mathIndicators.some(pattern => pattern.test(line));
+}
+
 export function parseLesson(lesson: string): ParsedSegment[] {
   const segments: ParsedSegment[] = [];
   let currentIndex = 0;
   
-  // Regular expressions for different math delimiters
   const patterns = [
-    { regex: /\$\$([^\$]+)\$\$/g, type: "display" },  // $$...$$
-    { regex: /\$([^\$]+)\$/g, type: "inline" },        // $...$
-    { regex: /\\\[([^\]]+)\\\]/g, type: "display" },   // \[...\]
-    { regex: /\\\(([^\)]+)\\\)/g, type: "inline" },    // \(...\)
+    { regex: /\$\$([^\$]+)\$\$/g, type: "display" },
+    { regex: /\\\[([^\]]+)\\\]/g, type: "display" },
+    { regex: /\\\(([^\)]+)\\\)/g, type: "inline" },
+    { regex: /\$([^\$]+)\$/g, type: "inline" },
   ];
   
-  // Find all math expressions with their positions
   const mathMatches: Array<{ start: number; end: number; content: string; original: string }> = [];
   
   for (const pattern of patterns) {
     let match;
     pattern.regex.lastIndex = 0;
     while ((match = pattern.regex.exec(lesson)) !== null) {
-      mathMatches.push({
+      const newMatch = {
         start: match.index,
         end: match.index + match[0].length,
         content: match[1].trim(),
         original: match[0],
-      });
+      };
+      
+      const hasOverlap = mathMatches.some(
+        existing => 
+          (newMatch.start >= existing.start && newMatch.start < existing.end) ||
+          (newMatch.end > existing.start && newMatch.end <= existing.end) ||
+          (newMatch.start <= existing.start && newMatch.end >= existing.end)
+      );
+      
+      if (!hasOverlap) {
+        mathMatches.push(newMatch);
+      }
     }
   }
   
-  // Sort by position
   mathMatches.sort((a, b) => a.start - b.start);
   
-  // Extract segments
   for (const mathMatch of mathMatches) {
-    // Add text before this math expression
     if (mathMatch.start > currentIndex) {
       const textContent = lesson.substring(currentIndex, mathMatch.start).trim();
       if (textContent) {
@@ -63,7 +82,6 @@ export function parseLesson(lesson: string): ParsedSegment[] {
       }
     }
     
-    // Add the math expression
     segments.push({
       type: "math",
       content: mathMatch.content,
@@ -73,7 +91,6 @@ export function parseLesson(lesson: string): ParsedSegment[] {
     currentIndex = mathMatch.end;
   }
   
-  // Add remaining text
   if (currentIndex < lesson.length) {
     const textContent = lesson.substring(currentIndex).trim();
     if (textContent) {
@@ -85,7 +102,6 @@ export function parseLesson(lesson: string): ParsedSegment[] {
     }
   }
   
-  // If no math found, treat entire text as text
   if (segments.length === 0) {
     segments.push({
       type: "text",
@@ -94,22 +110,56 @@ export function parseLesson(lesson: string): ParsedSegment[] {
     });
   }
   
-  return segments;
+  const processedSegments: ParsedSegment[] = [];
+  
+  for (const segment of segments) {
+    if (segment.type === "text") {
+      const lines = segment.content.split('\n');
+      let currentText = "";
+      
+      for (const line of lines) {
+        if (line.trim() && isMathLine(line)) {
+          if (currentText.trim()) {
+            processedSegments.push({
+              type: "text",
+              content: currentText.trim(),
+              original: currentText.trim(),
+            });
+            currentText = "";
+          }
+          processedSegments.push({
+            type: "math",
+            content: line.trim(),
+            original: line.trim(),
+          });
+        } else {
+          currentText += line + '\n';
+        }
+      }
+      
+      if (currentText.trim()) {
+        processedSegments.push({
+          type: "text",
+          content: currentText.trim(),
+          original: currentText.trim(),
+        });
+      }
+    } else {
+      processedSegments.push(segment);
+    }
+  }
+  
+  return processedSegments.length > 0 ? processedSegments : segments;
 }
 
-/**
- * Clean LaTeX notation for Nemeth conversion
- * Converts LaTeX commands to readable math
- */
 function cleanLatexForNemeth(latex: string): string {
   let cleaned = latex;
   
-  // Common LaTeX commands
   const replacements: Record<string, string> = {
     '\\times': '*',
     '\\cdot': '*',
     '\\div': '/',
-    '\\frac': '',  // Handle separately
+    '\\frac': '',
     '\\sqrt': 'sqrt',
     '\\sin': 'sin',
     '\\cos': 'cos',
@@ -131,61 +181,63 @@ function cleanLatexForNemeth(latex: string): string {
   };
   
   for (const [latex, replacement] of Object.entries(replacements)) {
-    cleaned = cleaned.replace(new RegExp(latex.replace('\\', '\\\\'), 'g'), replacement);
+    const escapedLatex = latex.replace(/\\/g, '\\\\');
+    cleaned = cleaned.replace(new RegExp(escapedLatex + '(?![a-zA-Z])', 'g'), replacement);
   }
   
-  // Handle fractions: \frac{a}{b} -> (a/b)
   cleaned = cleaned.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1/$2)');
-  
-  // Handle square roots: \sqrt{x} -> sqrt(x)
   cleaned = cleaned.replace(/\\sqrt\{([^}]+)\}/g, 'sqrt($1)');
-  
-  // Remove remaining braces
   cleaned = cleaned.replace(/[{}]/g, '');
-  
-  // Remove backslashes
   cleaned = cleaned.replace(/\\/g, '');
   
   return cleaned.trim();
 }
 
-/**
- * Convert a mixed lesson (text + math) to Braille
- */
 export async function convertMixedLesson(lesson: string): Promise<MixedBrailleResult> {
   try {
     const segments = parseLesson(lesson);
     const convertedSegments = [];
-    let fullBraille = "";
     let englishOnly = "";
     const mathOnly: string[] = [];
     
-    for (const segment of segments) {
+    const braillePromises = segments.map(async (segment) => {
       if (segment.type === "text") {
-        // Convert text to English Braille
         const result = await textToBraille(segment.content, "en-us-g2");
-        convertedSegments.push({
+        return {
           type: "text" as const,
           original: segment.original,
           braille: result.braille,
-        });
-        fullBraille += result.braille + "⠀"; // Add space
-        englishOnly += segment.content + " ";
+          cleanedContent: segment.content,
+        };
       } else {
-        // Convert math to Nemeth Braille
         const cleanedMath = cleanLatexForNemeth(segment.content);
         const result = await textToBraille(cleanedMath, "nemeth");
-        
-        // Add Nemeth indicators (⠼ is number indicator, we'll use it as a simple marker)
-        const nemethBraille = "⠸⠩" + result.braille + "⠸⠱"; // Nemeth opening/closing
-        
-        convertedSegments.push({
+        const nemethBraille = "⠸⠩" + result.braille + "⠸⠱";
+        return {
           type: "math" as const,
           original: segment.original,
           braille: nemethBraille,
-        });
-        fullBraille += nemethBraille + "⠀"; // Add space
-        mathOnly.push(segment.original + " = " + cleanedMath);
+          cleanedContent: cleanedMath,
+        };
+      }
+    });
+    
+    const processedSegments = await Promise.all(braillePromises);
+    
+    let fullBraille = "";
+    for (const segment of processedSegments) {
+      convertedSegments.push({
+        type: segment.type,
+        original: segment.original,
+        braille: segment.braille,
+      });
+      
+      if (segment.type === "text") {
+        fullBraille += segment.braille + "⠀";
+        englishOnly += segment.cleanedContent + "\n";
+      } else {
+        fullBraille += segment.braille + "⠀";
+        mathOnly.push(segment.original + " → " + segment.braille);
       }
     }
     
@@ -207,4 +259,3 @@ export async function convertMixedLesson(lesson: string): Promise<MixedBrailleRe
     };
   }
 }
-
