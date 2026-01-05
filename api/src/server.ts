@@ -41,7 +41,7 @@ app.use(passport.session());
 
 app.use("/users", usersRouter);
 app.use("/api/auth", accountsRouter);
-app.use("/api", parseSourceRouter);
+app.use("/api/parse", parseSourceRouter);
 
 app.listen(8000, () => {
   console.log(`🚀 Server running on port 8000`);
