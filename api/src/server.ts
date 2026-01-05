@@ -5,6 +5,7 @@ import passport from "passport";
 import cors from "cors";
 import usersRouter from "./routes/users.js";
 import accountsRouter from "./routes/accounts.js";
+import brailleRouter from "./routes/braille.js";
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use(passport.session());
 
 app.use("/users", usersRouter);
 app.use("/api/auth", accountsRouter);
+app.use("/api/braille", brailleRouter);
 
 app.listen(8000, () => {
   console.log(`🚀 Server running on port 8000`);
