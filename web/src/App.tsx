@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
 import Dashboard from './pages/Dashboard';
 import UserSetupPage from './pages/UserSetupPage';
+import { LessonViewerPage } from './pages/LessonViewerPage';
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
@@ -97,6 +98,12 @@ function App() {
                 <Dashboard currentProfile={currentProfile} />
               </Layout>
             </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/lesson-viewer" 
+          element={
+            <LessonViewerPage />
           } 
         />
       </Routes>
