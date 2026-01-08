@@ -1,399 +1,384 @@
-import pdfParse from "pdf-parse";
+import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
+import { callGeminiJson } from "../gemini.js";
 
-// Types
-export type Section = {
-  id: string;
-  section: string;
-  content: string;
-  summary: string;
-  diagramSummary?: string;
-  diagrams: string[];
-};
+// Section listed in TOC (before full parsing)
+export interface TOCSection {
+  sectionId: string;
+  title: string;
+  page?: number;
+}
 
-export type Chapter = {
-  chapter: string;
-  Sections: Section[];
-  chapterSummary?: string;
-  chapterContent?: string;
-  dynamicIdeas?: string[];
-  labels?: string[];
-  language?: string;
-};
+// Basic chapter info from TOC with optional sections
+export interface ChapterInfo {
+  title: string;
+  startPage: number;
+  tocSections: TOCSection[] | null; // null if sections not listed in TOC
+}
 
-type GeminiResponse = {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{
-        text?: string;
-      }>;
-    };
-  }>;
-};
+// Section within a unit/chapter (after full parsing)
+export interface Section {
+  sectionId: string;
+  title: string;
+  description: string;
+  learningGoals: string[];
+}
 
-// Constants
-const CHAPTER_HEADING = /^\s*(chapter|unit|section)\s+(\d+)\s*[:.\-]?\s*(.+)?$/i;
-const SECTION_HEADING = /^\s*(\d+\.\d+(?:\.\d+)?)\s*[:.\-]?\s*(.+)?$/;
+// Full parsed unit structure
+export interface ParsedUnit {
+  unitTitle: string;
+  unitDescription: string;
+  sections: Section[];
+}
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-const PARSE_CHUNK_CHARS = Number(process.env.GEMINI_PARSE_CHUNK_CHARS || "12000");
-const PARSE_CHUNK_OVERLAP = Number(process.env.GEMINI_PARSE_CHUNK_OVERLAP || "1500");
+interface TOCCandidate {
+  pageNum: number;
+  score: number;
+  text: string;
+}
 
-// Helper functions
-const normalizeLine = (line: string) => line.replace(/\s+/g, " ").trim();
+/**
+ * Score a page to determine how likely it is to be a TOC page.
+ * Higher score = more likely to be TOC.
+ */
+function scoreTOCPage(pageText: string): number {
+  let score = 0;
+  const lowerText = pageText.toLowerCase();
+  
+  // Strong indicators: "Table of Contents" or "Contents" as a standalone heading
+  // Check if it appears near the start or as a prominent phrase
+  if (/^[\s]*table\s+of\s+contents/i.test(pageText) || 
+      /\n[\s]*table\s+of\s+contents/i.test(pageText)) {
+    score += 50;
+  } else if (/^[\s]*contents[\s]*$/im.test(pageText) || 
+             /\n[\s]*contents[\s]*\n/i.test(pageText)) {
+    score += 40;
+  } else if (lowerText.includes("table of contents")) {
+    score += 30;
+  } else if (lowerText.includes("contents")) {
+    score += 10;
+  }
+  
+  // Count page number patterns (lines ending with numbers, or "... 23" patterns)
+  // TOC pages typically have many such patterns
+  const pageNumberPatterns = pageText.match(/\.{2,}\s*\d+|\s+\d{1,4}\s*$/gm) || [];
+  score += Math.min(pageNumberPatterns.length * 5, 40); // Cap at 40 points
+  
+  // Count entries that look like chapter/unit listings
+  const chapterPatterns = pageText.match(/chapter\s+\d+|unit\s+\d+|lesson\s+\d+|\d+\.\s+[A-Z]/gi) || [];
+  score += Math.min(chapterPatterns.length * 8, 32); // Cap at 32 points
+  
+  // Penalize if the page has very long paragraphs (likely content, not TOC)
+  const avgWordsPerLine = pageText.split('\n').reduce((acc, line) => {
+    const words = line.trim().split(/\s+/).length;
+    return acc + words;
+  }, 0) / Math.max(pageText.split('\n').length, 1);
+  
+  if (avgWordsPerLine > 15) {
+    score -= 20; // Likely a content page, not TOC
+  }
+  
+  // Bonus if many lines have similar structure (typical of TOC)
+  const lines = pageText.split('\n').filter(l => l.trim().length > 0);
+  const linesWithNumbers = lines.filter(l => /\d+\s*$/.test(l.trim())).length;
+  if (lines.length > 5 && linesWithNumbers / lines.length > 0.3) {
+    score += 25; // More than 30% of lines end with numbers
+  }
+  
+  return score;
+}
 
-const stripTrailingPageNumber = (title: string) => title.replace(/\s*\d+\s*$/, "").trim();
+export async function extractTOCText(
+  buffer: Buffer,
+  maxPagesToScan = 40,
+  maxTocPagesToExtract = 30
+): Promise<string> {
+  const data = new Uint8Array(buffer);
+  const loadingTask = pdfjs.getDocument({ data });
+  const pdf = await loadingTask.promise;
 
-const hasLetters = (value: string) => /[A-Za-z\u00C0-\u024F\u1E00-\u1EFF]/.test(value);
+  const candidates: TOCCandidate[] = [];
+  const minScoreThreshold = 25; // Minimum score to be considered a TOC candidate
 
-const normalizeTitleForMatch = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  // Scan first N pages and score each one
+  for (let pageNum = 1; pageNum <= Math.min(maxPagesToScan, pdf.numPages); pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    const content = await page.getTextContent();
+    const pageText = content.items.map((item: any) => item.str).join(" ");
+    
+    // Also get text with newlines preserved for better pattern matching
+    const pageTextWithNewlines = content.items.map((item: any) => {
+      // pdfjs items have transform info; use hasEOL or check for significant Y changes
+      return item.str + (item.hasEOL ? '\n' : ' ');
+    }).join("");
 
-const normalizeKey = (value: string) => normalizeTitleForMatch(value).replace(/\s+/g, " ").trim();
-
-const extractTocChapters = (lines: string[]) => {
-  const chapters: Array<{ number: string; title: string }> = [];
-  const startIndex = lines.findIndex((line) => line.toLowerCase() === "contents");
-  if (startIndex === -1) return chapters;
-
-  for (let i = startIndex + 1; i < lines.length; i += 1) {
-    const line = lines[i];
-    if (!line) continue;
-    if (/^appendix|^answers|^glossary|^index/i.test(line)) break;
-
-    const normalized = line.replace(/\.{2,}/g, " ").replace(/\s+/g, " ").trim();
-    const match = normalized.match(/^(chapter|unit|section)\s+(\d+)\s+(.+)\s+(\d{1,4})$/i);
-    if (match) {
-      const number = match[2];
-      const rawTitle = stripTrailingPageNumber(match[3]);
-      if (rawTitle) {
-        chapters.push({ number, title: rawTitle });
-      }
+    const score = scoreTOCPage(pageTextWithNewlines);
+    
+    if (score >= minScoreThreshold) {
+      candidates.push({ pageNum, score, text: pageText });
+      console.log(`Page ${pageNum} scored ${score} as potential TOC`);
     }
   }
 
-  return chapters;
-};
-
-const looksLikeSectionHeading = (line: string, match: RegExpMatchArray) => {
-  const title = (match[2] || "").trim();
-  if (!title) return false;
-  if (!hasLetters(title)) return false;
-  const numericParts = match[1].split(".").map((part) => Number(part));
-  if (numericParts.some((part) => Number.isNaN(part))) return false;
-  if (numericParts[0] > 50 || numericParts[1] > 50) return false;
-  if (title.length > 120) return false;
-  if (line.length > 140) return false;
-  return true;
-};
-
-const extractDiagramRefs = (line: string) => {
-  const matches = line.match(/(fig(?:ure)?\.?\s*\d+(?:\.\d+)?)/gi);
-  return matches ? matches.map((match) => match.trim()) : [];
-};
-
-const summarize = (content: string) => {
-  const cleaned = content.replace(/\s+/g, " ").trim();
-  if (!cleaned) return "";
-  const sentenceMatch = cleaned.match(/.*?[.!?](\s|$)/);
-  const summary = sentenceMatch ? sentenceMatch[0] : cleaned;
-  return summary.slice(0, 220).trim();
-};
-
-const stripJsonFence = (value: string) => {
-  const fencedMatch = value.match(/```json\s*([\s\S]*?)```/i);
-  if (fencedMatch) return fencedMatch[1].trim();
-  return value.trim();
-};
-
-const safeJsonParse = (value: string) => {
-  try {
-    return JSON.parse(stripJsonFence(value));
-  } catch {
-    return null;
-  }
-};
-
-const callGemini = async (prompt: string) => {
-  if (!GEMINI_API_KEY) return null;
-  console.log(GEMINI_API_KEY)
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.4,
-        maxOutputTokens: 1200,
-        response_mime_type: "application/json",
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gemini request failed: ${response.status} ${errorText}`);
+  if (candidates.length === 0) {
+    throw new Error("Could not find Table of Contents page. No pages matched TOC patterns.");
   }
 
-  const payload = (await response.json()) as GeminiResponse;
-  const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text || typeof text !== "string") return null;
-  return safeJsonParse(text);
-};
+  // Sort by score (highest first) and pick the best candidate
+  candidates.sort((a, b) => b.score - a.score);
+  const bestCandidate = candidates[0];
+  
+  console.log(`Selected page ${bestCandidate.pageNum} as TOC start (score: ${bestCandidate.score})`);
 
-const chunkText = (text: string, chunkSize: number, overlap: number) => {
-  const paragraphs = text.split(/\n{2,}/).map((para) => para.trim()).filter(Boolean);
-  const chunks: string[] = [];
-  let current = "";
+  // Extract pages starting from TOC
+  const tocPages: string[] = [];
+  const pagesToExtract = Math.min(maxTocPagesToExtract, pdf.numPages - bestCandidate.pageNum + 1);
 
-  for (const paragraph of paragraphs) {
-    const next = current ? `${current}\n\n${paragraph}` : paragraph;
-    if (next.length > chunkSize && current) {
-      chunks.push(current);
-      const tail = current.slice(Math.max(0, current.length - overlap));
-      current = tail ? `${tail}\n\n${paragraph}` : paragraph;
+  for (let i = 0; i < pagesToExtract; i++) {
+    const pageNum = bestCandidate.pageNum + i;
+    const page = await pdf.getPage(pageNum);
+    const content = await page.getTextContent();
+    const pageText = content.items.map((item: any) => item.str).join(" ");
+    tocPages.push(pageText);
+  }
+
+  console.log(`Extracted ${tocPages.length} pages starting from TOC (page ${bestCandidate.pageNum})`);
+  return tocPages.join("\n\n");
+}
+
+export async function extractChaptersWithGemini(buffer: Buffer): Promise<ChapterInfo[]> {
+  const tocText = await extractTOCText(buffer);
+  
+  const prompt = `You are a PDF parsing assistant. Below is the text extracted from a textbook's Table of Contents (TOC) section. It may span multiple pages.
+
+Your task:
+1. Identify ALL chapters/units listed in the TOC - make sure you don't miss any or create duplicates
+2. Extract the chapter title and its starting page number
+3. For EACH chapter, check if the TOC lists sub-sections/topics under it. If sections ARE listed, include them. If NOT listed, set tocSections to null.
+4. Return ONLY valid JSON in this exact format:
+
+{
+  "chapters": [
+    {
+      "title": "Chapter 1: Physical World",
+      "startPage": 1,
+      "tocSections": [
+        {"sectionId": "1.1", "title": "What is Physics?", "page": 1},
+        {"sectionId": "1.2", "title": "Scope and Excitement of Physics", "page": 3}
+      ]
+    },
+    {
+      "title": "Chapter 2: Units and Measurements",
+      "startPage": 16,
+      "tocSections": null
+    },
+    {
+      "title": "Chapter 3: Motion in a Straight Line",
+      "startPage": 35,
+      "tocSections": [
+        {"sectionId": "3.1", "title": "Position, Path Length and Displacement", "page": 35},
+        {"sectionId": "3.2", "title": "Average Velocity and Average Speed", "page": 38}
+      ]
+    }
+  ]
+}
+
+CRITICAL Rules:
+- Extract EVERY chapter in sequential order (Chapter 1, 2, 3, 4... or Unit 1, 2, 3...)
+- Do NOT skip any chapters - if you see Chapter 1, 2, 4 you are missing Chapter 3
+- Do NOT duplicate chapters - each chapter should appear exactly once
+- Page numbers must be integers
+- tocSections should be an array of sections IF they are explicitly listed in the TOC under that chapter
+- tocSections should be null if the TOC does NOT list sub-sections for that chapter
+- sectionId should match the numbering in the TOC (e.g., "1.1", "1.2" or "2.1", "2.2")
+- Include "Preface", "Introduction", "Appendix", "Answers" etc. as separate entries if they appear
+- Stop parsing when you detect the TOC has ended (e.g., when actual chapter content starts)
+- Return ONLY the JSON object, no other text
+
+TOC Text:
+${tocText}`;
+
+  const result = await callGeminiJson<{ chapters: ChapterInfo[] }>(prompt);
+  
+  if (!result || !result.chapters || result.chapters.length === 0) {
+    throw new Error("Failed to extract chapters from TOC using Gemini");
+  }
+
+  // Validate and deduplicate chapters
+  const seenTitles = new Set<string>();
+  const uniqueChapters: ChapterInfo[] = [];
+  
+  for (const chapter of result.chapters) {
+    // Normalize title for comparison
+    const normalizedTitle = chapter.title.toLowerCase().trim();
+    
+    if (!seenTitles.has(normalizedTitle)) {
+      seenTitles.add(normalizedTitle);
+      uniqueChapters.push(chapter);
     } else {
-      current = next;
+      console.warn(`Duplicate chapter detected and removed: "${chapter.title}"`);
     }
   }
 
-  if (current) chunks.push(current);
-  return chunks;
-};
+  // Sort by startPage to ensure correct order
+  uniqueChapters.sort((a, b) => a.startPage - b.startPage);
 
-const buildParsePrompt = (chunk: string, chunkIndex: number, totalChunks: number) => [
-  "You are parsing a textbook PDF into structured JSON.",
-  "The source can be any language; do not translate.",
-  "Ignore headers, footers, page numbers, and repeated artifacts.",
-  "Return ONLY valid JSON with this shape:",
-  "[",
-  '  { "chapter": "Chapter Name", "Sections": [',
-  '      { "id": "1.1", "section": "Section name", "summary": "2-3 sentences", "diagramSummary": "", "diagrams": [] }',
-  "    ] }",
-  "]",
-  "Use empty string for id if missing.",
-  "Summaries should be concise and accurate.",
-  `Chunk ${chunkIndex + 1} of ${totalChunks}.`,
-  `Text:\n${chunk}`,
-].join("\n");
+  console.log(`Gemini extracted ${uniqueChapters.length} unique chapters`);
+  return uniqueChapters;
+}
 
-const mergeChapters = (base: Chapter[], incoming: Chapter[]) => {
-  for (const incomingChapter of incoming) {
-    const chapterTitle = (incomingChapter as Chapter).chapter || "";
-    if (!chapterTitle) continue;
-    const chapterKey = normalizeKey(chapterTitle);
-    let target = base.find((chapter) => normalizeKey(chapter.chapter) === chapterKey);
-    if (!target) {
-      target = {
-        chapter: chapterTitle,
-        Sections: [],
-        chapterSummary: incomingChapter.chapterSummary,
-        chapterContent: incomingChapter.chapterContent,
-        dynamicIdeas: incomingChapter.dynamicIdeas,
-        labels: incomingChapter.labels,
-        language: incomingChapter.language,
-      };
-      base.push(target);
+/**
+ * Extract text for a specific page range from PDF
+ */
+async function extractPagesText(
+  pdf: pdfjs.PDFDocumentProxy,
+  startPage: number,
+  endPage: number
+): Promise<string> {
+  let text = "";
+  for (let pageNum = startPage; pageNum <= endPage; pageNum++) {
+    if (pageNum > pdf.numPages) break;
+    const page = await pdf.getPage(pageNum);
+    const content = await page.getTextContent();
+    text += content.items.map((item: any) => item.str).join(" ") + "\n";
+  }
+  return text.trim();
+}
+
+/**
+ * Extract text for each chapter based on Gemini-parsed chapters
+ */
+export async function extractChapterTexts(buffer: Buffer) {
+  const chapters = await extractChaptersWithGemini(buffer);
+  const data = new Uint8Array(buffer);
+  const loadingTask = pdfjs.getDocument({ data });
+  const pdf = await loadingTask.promise;
+
+  const chapterTexts: Record<string, string> = {};
+
+  for (let i = 0; i < chapters.length; i++) {
+    const startPage = chapters[i].startPage;
+    const endPage = i + 1 < chapters.length ? chapters[i + 1].startPage - 1 : pdf.numPages;
+    chapterTexts[chapters[i].title] = await extractPagesText(pdf, startPage, endPage);
+  }
+
+  return { chapters, chapterTexts };
+}
+
+/**
+ * Parse a single chapter/unit into sections with learning goals using Gemini
+ * @param chapterTitle - The title of the chapter
+ * @param chapterText - The extracted text content of the chapter
+ * @param tocSections - Optional sections from TOC to guide parsing
+ */
+async function parseChapterSections(
+  chapterTitle: string,
+  chapterText: string,
+  tocSections: TOCSection[] | null = null
+): Promise<ParsedUnit> {
+  // Build section guidance if TOC sections are available
+  let sectionGuidance = "";
+  if (tocSections && tocSections.length > 0) {
+    sectionGuidance = `
+IMPORTANT: The Table of Contents lists the following sections for this chapter. Use these as the PRIMARY structure:
+${tocSections.map(s => `- ${s.sectionId}: ${s.title}`).join('\n')}
+
+Your sections MUST match these TOC sections. Add learning goals for each.
+`;
+  }
+
+  const prompt = `You are an educational content parser. Below is the text extracted from a textbook chapter/unit.
+
+Your task:
+1. Identify the unit/chapter title and create a brief description
+2. Break down the chapter into logical sections/topics
+3. For each section, identify the key learning goals/objectives
+${sectionGuidance}
+Return ONLY valid JSON in this exact format:
+{
+  "unitTitle": "Unit 1: Kinematics",
+  "unitDescription": "Explore the fundamentals of motion by analyzing and applying multiple representations such as words, diagrams, graphs, and equations.",
+  "sections": [
+    {
+      "sectionId": "1.1",
+      "title": "Scalars and Vectors in One Dimension",
+      "description": "Introduce scalar and vector quantities and their role in describing motion in one dimension.",
+      "learningGoals": [
+        "Explain scalars",
+        "Explain vectors",
+        "Differentiate between scalar and vector quantities",
+        "Understand position, distance, and displacement"
+      ]
+    },
+    {
+      "sectionId": "1.2",
+      "title": "Visual Representations of Motion",
+      "description": "Use diagrams and graphs to describe motion and extract physical meaning from them.",
+      "learningGoals": [
+        "Interpret position-time graphs",
+        "Interpret velocity-time graphs",
+        "Find displacement from velocity graphs"
+      ]
     }
+  ]
+}
 
-    const incomingSections =
-      (incomingChapter as Chapter).Sections || (incomingChapter as { sections?: Section[] }).sections || [];
-    for (const incomingSection of incomingSections) {
-      const sectionTitle = incomingSection.section || (incomingSection as { title?: string }).title || "";
-      if (!sectionTitle) continue;
-      const sectionKey = incomingSection.id
-        ? `${incomingSection.id}:${normalizeKey(sectionTitle)}`
-        : normalizeKey(sectionTitle);
-      const existing = target.Sections.find((section) => {
-        const existingKey = section.id
-          ? `${section.id}:${normalizeKey(section.section)}`
-          : normalizeKey(section.section);
-        return existingKey === sectionKey;
+Rules:
+- unitTitle should match or be derived from the chapter title: "${chapterTitle}"
+- unitDescription should be 1-2 sentences summarizing the chapter's focus
+- ${tocSections ? 'Use the TOC sections provided above as the structure' : 'Break the chapter into 2-8 logical sections based on the content'}
+- Each section should have 3-8 specific, actionable learning goals
+- sectionId should follow a numbering scheme (1.1, 1.2, etc. or match the textbook's numbering if visible)
+- Learning goals should start with action verbs (Explain, Calculate, Interpret, Differentiate, Understand, Apply, etc.)
+- Return ONLY the JSON object, no other text
+
+Chapter Text:
+${chapterText.substring(0, 15000)}`;  // Limit text to avoid token limits
+
+  const result = await callGeminiJson<ParsedUnit>(prompt);
+  
+  if (!result || !result.unitTitle || !result.sections) {
+    throw new Error(`Failed to parse sections for chapter: ${chapterTitle}`);
+  }
+
+  return result;
+}
+
+/**
+ * Full parsing pipeline: Parse chapters into sections with learning goals
+ * @param buffer - PDF file buffer
+ * @param chapters - Pre-extracted chapters from the /chapters endpoint
+ */
+export async function parseFullTextbook(buffer: Buffer, chapters: ChapterInfo[]): Promise<ParsedUnit[]> {
+  const data = new Uint8Array(buffer);
+  const loadingTask = pdfjs.getDocument({ data });
+  const pdf = await loadingTask.promise;
+
+  const parsedUnits: ParsedUnit[] = [];
+
+  for (let i = 0; i < chapters.length; i++) {
+    const chapter = chapters[i];
+    const startPage = chapter.startPage;
+    const endPage = i + 1 < chapters.length ? chapters[i + 1].startPage - 1 : pdf.numPages;
+    
+    const hasTocSections = chapter.tocSections && chapter.tocSections.length > 0;
+    console.log(`Parsing chapter "${chapter.title}" (pages ${startPage}-${endPage})${hasTocSections ? ` with ${chapter.tocSections!.length} TOC sections` : ''}...`);
+    
+    const chapterText = await extractPagesText(pdf, startPage, endPage);
+    
+    try {
+      const parsedUnit = await parseChapterSections(chapter.title, chapterText, chapter.tocSections);
+      parsedUnits.push(parsedUnit);
+      console.log(`  → Extracted ${parsedUnit.sections.length} sections`);
+    } catch (error) {
+      console.error(`  → Failed to parse chapter "${chapter.title}":`, error);
+      // Add a placeholder for failed chapters
+      parsedUnits.push({
+        unitTitle: chapter.title,
+        unitDescription: "Failed to parse this chapter.",
+        sections: []
       });
-
-      if (!existing) {
-        target.Sections.push({
-          id: incomingSection.id || "",
-          section: sectionTitle,
-          content: "",
-          summary: incomingSection.summary || "",
-          diagramSummary: incomingSection.diagramSummary,
-          diagrams: incomingSection.diagrams ? [...incomingSection.diagrams] : [],
-        });
-      } else {
-        if (!existing.summary && incomingSection.summary) existing.summary = incomingSection.summary;
-        if (!existing.diagramSummary && incomingSection.diagramSummary) {
-          existing.diagramSummary = incomingSection.diagramSummary;
-        }
-        if (incomingSection.diagrams && existing.diagrams) {
-          for (const diagram of incomingSection.diagrams) {
-            if (!existing.diagrams.includes(diagram)) existing.diagrams.push(diagram);
-          }
-        }
-      }
-    }
-  }
-};
-
-const buildChapterPrompt = (chapter: Chapter) => {
-  const sectionTitles = chapter.Sections.map((section) => section.section).slice(0, 50);
-  const sampleContent = chapter.Sections.map((section) => section.summary).join("\n\n");
-
-  return [
-    "You are summarizing a chapter from a PDF. The source can be any language.",
-    "Detect the language and respond in the same language.",
-    "Return ONLY valid JSON with this shape:",
-    "{",
-    '  "language": "string (detected language name or ISO code)",',
-    '  "chapterSummary": "2-3 sentences",',
-    '  "chapterContent": "1-2 short paragraphs teaching the chapter",',
-    '  "dynamicIdeas": ["idea1", "idea2", "idea3"],',
-    '  "labels": ["keyword1", "keyword2", "keyword3"]',
-    "}",
-    "Labels should help find similar content in a database.",
-    `Chapter title: ${chapter.chapter}`,
-    `Section titles: ${sectionTitles.join(" | ")}`,
-    `Sample content:\n${sampleContent}`,
-  ].join("\n");
-};
-
-// Exported parsing functions
-export const parseSourceText = (text: string): Chapter[] => {
-  const lines = text.split(/\r?\n/).map(normalizeLine).filter(Boolean);
-  const tocChapters = extractTocChapters(lines);
-  const chapters: Chapter[] = [];
-  const chapterMap = new Map<string, Chapter>();
-
-  for (const tocChapter of tocChapters) {
-    const chapterTitle = `Chapter ${tocChapter.number}: ${tocChapter.title}`.replace(/\s+/g, " ").trim();
-    const chapter: Chapter = { chapter: chapterTitle, Sections: [] };
-    chapters.push(chapter);
-    chapterMap.set(tocChapter.number, chapter);
-  }
-
-  let currentChapter: Chapter | null = null;
-  let currentSection: Section | null = null;
-  let currentBuffer: string[] = [];
-
-  const flushSection = () => {
-    if (!currentSection) return;
-    const content = currentBuffer.join(" ");
-    currentSection.content = content;
-    currentSection.summary = summarize(content);
-    currentBuffer = [];
-  };
-
-  const startChapter = (title: string) => {
-    if (currentSection) flushSection();
-    currentSection = null;
-    currentChapter = { chapter: title, Sections: [] };
-    chapters.push(currentChapter);
-  };
-
-  const startSection = (id: string, title: string) => {
-    if (!currentChapter) {
-      currentChapter = { chapter: "Chapter 1", Sections: [] };
-      chapters.push(currentChapter);
-    }
-    if (currentSection) flushSection();
-    currentSection = { id, section: title, content: "", summary: "", diagrams: [] };
-    currentChapter.Sections.push(currentSection);
-  };
-
-  for (const line of lines) {
-    const chapterMatch = line.match(CHAPTER_HEADING);
-    if (chapterMatch) {
-      const label = chapterMatch[1];
-      const number = chapterMatch[2];
-      const rawTitle = chapterMatch[3] ? chapterMatch[3] : "";
-      const cleanTitle = stripTrailingPageNumber(rawTitle);
-      const title = cleanTitle ? `: ${cleanTitle}` : "";
-      const headingTitle = `${label} ${number}${title}`.replace(/\s+/g, " ").trim();
-
-      if (tocChapters.length > 0) {
-        const tocChapter = tocChapters.find((entry) => entry.number === number);
-        if (tocChapter) {
-          const tocTitle = normalizeTitleForMatch(tocChapter.title);
-          const headingNormalized = normalizeTitleForMatch(cleanTitle);
-          if (!headingNormalized || tocTitle.includes(headingNormalized) || headingNormalized.includes(tocTitle)) {
-            currentChapter = chapterMap.get(number) || null;
-            if (!currentChapter) {
-              currentChapter = { chapter: headingTitle, Sections: [] };
-              chapters.push(currentChapter);
-              chapterMap.set(number, currentChapter);
-            } else {
-              currentChapter.chapter = `Chapter ${number}: ${tocChapter.title}`.trim();
-            }
-            continue;
-          }
-        }
-      } else {
-        startChapter(headingTitle);
-        continue;
-      }
-    }
-
-    const sectionMatch = line.match(SECTION_HEADING);
-    if (sectionMatch && looksLikeSectionHeading(line, sectionMatch)) {
-      const id = sectionMatch[1];
-      const title = sectionMatch[2] || `Section ${id}`;
-      startSection(id, title);
-      continue;
-    }
-
-    if (!currentSection) {
-      startSection("1.1", "Introduction");
-    }
-
-    const diagrams = extractDiagramRefs(line);
-    if (diagrams.length > 0 && currentSection !== null) {
-      (currentSection as Section).diagrams.push(...diagrams);
-    }
-    currentBuffer.push(line);
-  }
-
-  if (currentSection) flushSection();
-
-  return chapters;
-};
-
-export const parseSourceWithGemini = async (text: string): Promise<Chapter[]> => {
-  const chunks = chunkText(text, PARSE_CHUNK_CHARS, PARSE_CHUNK_OVERLAP);
-  const chapters: Chapter[] = [];
-
-  for (let i = 0; i < chunks.length; i += 1) {
-    const chunk = chunks[i];
-    const aiData = await callGemini(buildParsePrompt(chunk, i, chunks.length));
-    if (Array.isArray(aiData)) {
-      mergeChapters(chapters, aiData as Chapter[]);
-    } else if (aiData && Array.isArray((aiData as { chapters?: Chapter[] }).chapters)) {
-      mergeChapters(chapters, (aiData as { chapters: Chapter[] }).chapters);
     }
   }
 
-  return chapters;
-};
-
-export const enrichChapterWithGemini = async (chapter: Chapter): Promise<void> => {
-  const prompt = buildChapterPrompt(chapter);
-  const aiData = await callGemini(prompt);
-  if (!aiData) return;
-
-  if (typeof aiData.language === "string") chapter.language = aiData.language;
-  if (typeof aiData.chapterSummary === "string") chapter.chapterSummary = aiData.chapterSummary;
-  if (typeof aiData.chapterContent === "string") chapter.chapterContent = aiData.chapterContent;
-  if (Array.isArray(aiData.dynamicIdeas)) chapter.dynamicIdeas = aiData.dynamicIdeas;
-  if (Array.isArray(aiData.labels)) chapter.labels = aiData.labels;
-};
-
-export const parsePdfBuffer = async (buffer: Buffer): Promise<string> => {
-  const parsedPdf = await pdfParse(buffer);
-  return parsedPdf.text;
-};
-
-export const hasGeminiApiKey = (): boolean => !!GEMINI_API_KEY;
+  return parsedUnits;
+}
