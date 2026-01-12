@@ -207,8 +207,11 @@ const chaptersBySubject: Record<string, ChapterData> = {
 // =============================================================================
 
 export async function seed() {
+  console.log("🌱 Seeding database...");
 
   try {
+    // 1. Insert all subjects
+    console.log("📚 Inserting subjects...");
     const insertedSubjects = await db
       .insert(subjects)
       .values(subjectData)
@@ -224,6 +227,10 @@ export async function seed() {
       insertedSubjects.forEach(s => subjectMap.set(s.slug, s.id));
     }
     
+    console.log(`✅ ${subjectMap.size} subjects ready`);
+
+    // 2. Insert curricula and classes
+    console.log("🏫 Inserting curricula and classes...");
     
     const classMap = new Map<string, string>();
 
@@ -274,6 +281,9 @@ export async function seed() {
       }
     }
     
+    console.log(`✅ ${curriculumData.length} curricula with classes ready`);
+
+    // Fetch existing classes if needed
     if (classMap.size === 0) {
       const existingClasses = await db
         .select({
@@ -288,6 +298,9 @@ export async function seed() {
         classMap.set(`${c.curriculumSlug}-${c.slug}`, c.id);
       });
     }
+
+    // 3. Insert class-subject mappings and track gradeSubject IDs
+    console.log("🔗 Inserting class-subject mappings...");
     
     const gradeSubjectMap = new Map<string, string>(); // "classId-subjectSlug" -> gradeSubjectId
 
@@ -319,6 +332,7 @@ export async function seed() {
       }
     }
 
+    // Fetch existing class-subjects if needed
     const existingGradeSubjects = await db
       .select({
         id: gradeSubjects.id,
@@ -331,6 +345,11 @@ export async function seed() {
     existingGradeSubjects.forEach(gs => {
       gradeSubjectMap.set(`${gs.classId}-${gs.subjectSlug}`, gs.id);
     });
+
+    console.log(`✅ ${gradeSubjectMap.size} class-subject mappings ready`);
+
+    // 4. Insert chapters for each grade-subject combination
+    console.log("📖 Inserting chapters...");
     
     let chapterCount = 0;
 
@@ -363,18 +382,26 @@ export async function seed() {
         }
       }
     }
+
+    console.log(`✅ ${chapterCount} chapters inserted`);
+    console.log("🎉 Basic seeding complete!");
+
+    // 5. Seed lessons from JSON files (optional)
     try {
       const { seedLessons } = await import("./seedLessons.js");
       await seedLessons();
     } catch (error) {
-      console.log("Lesson seeding skipped or failed (this is optional)");
+      // Don't fail if lesson seeding fails - it's optional
+      console.log("⚠️  Lesson seeding skipped or failed (this is optional)");
     }
 
   } catch (error) {
-    console.error("Seeding failed:", error);
+    console.error("❌ Seeding failed:", error);
     throw error;
   }
 }
+
+// Run if executed directly
 const isMainModule = import.meta.url === `file://${process.argv[1]}`;
 if (isMainModule) {
   seed()
