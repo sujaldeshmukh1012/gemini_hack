@@ -127,80 +127,10 @@ const gradeSubjectMappings: Record<string, Record<string, string[]>> = {
 };
 
 // =============================================================================
-// CHAPTER DATA (CBSE Class 11 as example - can be expanded)
+// CHAPTERS ARE NOW SEEDED FROM JSON FILES (see seedLessons.ts)
 // =============================================================================
-
-type ChapterData = { slug: string; name: string; description: string }[];
-
-const chaptersBySubject: Record<string, ChapterData> = {
-  "physics": [
-    { slug: "physical-world", name: "Physical World", description: "Nature of physical laws and scope of physics" },
-    { slug: "units-measurements", name: "Units and Measurements", description: "SI units, dimensional analysis, errors" },
-    { slug: "motion-straight-line", name: "Motion in a Straight Line", description: "Position, velocity, acceleration, equations of motion" },
-    { slug: "motion-plane", name: "Motion in a Plane", description: "Vectors, projectile motion, circular motion" },
-    { slug: "laws-motion", name: "Laws of Motion", description: "Newton's laws, friction, circular motion dynamics" },
-    { slug: "work-energy-power", name: "Work, Energy and Power", description: "Work-energy theorem, conservation of energy" },
-    { slug: "system-particles", name: "System of Particles and Rotational Motion", description: "Center of mass, torque, angular momentum" },
-    { slug: "gravitation", name: "Gravitation", description: "Newton's law of gravitation, orbital motion, satellites" },
-  ],
-  "chemistry": [
-    { slug: "basic-concepts", name: "Some Basic Concepts of Chemistry", description: "Mole concept, stoichiometry, atomic mass" },
-    { slug: "structure-atom", name: "Structure of Atom", description: "Atomic models, quantum numbers, electronic configuration" },
-    { slug: "periodic-table", name: "Classification of Elements and Periodicity", description: "Periodic trends, properties" },
-    { slug: "chemical-bonding", name: "Chemical Bonding and Molecular Structure", description: "Ionic, covalent bonds, VSEPR theory" },
-    { slug: "states-matter", name: "States of Matter", description: "Gas laws, kinetic theory, liquids and solids" },
-    { slug: "thermodynamics", name: "Thermodynamics", description: "Laws of thermodynamics, enthalpy, entropy" },
-    { slug: "equilibrium", name: "Equilibrium", description: "Chemical and ionic equilibrium, pH, buffers" },
-  ],
-  "mathematics": [
-    { slug: "sets", name: "Sets", description: "Set theory, operations, Venn diagrams" },
-    { slug: "relations-functions", name: "Relations and Functions", description: "Types of relations, functions, graphs" },
-    { slug: "trigonometry", name: "Trigonometric Functions", description: "Trigonometric ratios, identities, equations" },
-    { slug: "complex-numbers", name: "Complex Numbers and Quadratic Equations", description: "Complex number algebra, quadratic equations" },
-    { slug: "linear-inequalities", name: "Linear Inequalities", description: "Solving and graphing linear inequalities" },
-    { slug: "permutations", name: "Permutations and Combinations", description: "Counting principles, arrangements, selections" },
-    { slug: "binomial-theorem", name: "Binomial Theorem", description: "Binomial expansion, general term" },
-    { slug: "sequences-series", name: "Sequences and Series", description: "AP, GP, special series" },
-    { slug: "straight-lines", name: "Straight Lines", description: "Slope, equations of lines, distance formulas" },
-    { slug: "conic-sections", name: "Conic Sections", description: "Circle, parabola, ellipse, hyperbola" },
-  ],
-  "biology": [
-    { slug: "living-world", name: "The Living World", description: "Characteristics of living organisms, taxonomy" },
-    { slug: "biological-classification", name: "Biological Classification", description: "Five kingdom classification" },
-    { slug: "plant-kingdom", name: "Plant Kingdom", description: "Classification of plants, life cycles" },
-    { slug: "animal-kingdom", name: "Animal Kingdom", description: "Classification of animals, phyla" },
-    { slug: "morphology-plants", name: "Morphology of Flowering Plants", description: "Root, stem, leaf, flower structure" },
-    { slug: "anatomy-plants", name: "Anatomy of Flowering Plants", description: "Tissues, tissue systems" },
-    { slug: "cell-unit-life", name: "Cell: The Unit of Life", description: "Cell structure, organelles" },
-    { slug: "biomolecules", name: "Biomolecules", description: "Carbohydrates, proteins, lipids, nucleic acids" },
-  ],
-  "science": [
-    { slug: "matter-surroundings", name: "Matter in Our Surroundings", description: "States of matter, change of state" },
-    { slug: "pure-substances", name: "Is Matter Around Us Pure", description: "Mixtures, solutions, separation techniques" },
-    { slug: "atoms-molecules", name: "Atoms and Molecules", description: "Atomic theory, molecules, ions" },
-    { slug: "structure-atom", name: "Structure of the Atom", description: "Subatomic particles, atomic models" },
-    { slug: "cell", name: "The Fundamental Unit of Life", description: "Cell structure and functions" },
-    { slug: "tissues", name: "Tissues", description: "Plant and animal tissues" },
-    { slug: "motion", name: "Motion", description: "Distance, displacement, velocity, acceleration" },
-    { slug: "force-laws-motion", name: "Force and Laws of Motion", description: "Newton's laws, inertia, momentum" },
-  ],
-  "english": [
-    { slug: "reading-comprehension", name: "Reading Comprehension", description: "Unseen passages, note-making" },
-    { slug: "writing-skills", name: "Writing Skills", description: "Letter writing, article writing, reports" },
-    { slug: "grammar", name: "Grammar", description: "Tenses, clauses, transformation of sentences" },
-    { slug: "literature-prose", name: "Literature - Prose", description: "Short stories, essays, extracts" },
-    { slug: "literature-poetry", name: "Literature - Poetry", description: "Poems, literary devices, appreciation" },
-  ],
-  "social-science": [
-    { slug: "india-france-revolution", name: "The French Revolution", description: "Causes, events, impact of French Revolution" },
-    { slug: "socialism-europe", name: "Socialism in Europe and Russian Revolution", description: "Rise of socialism, Russian Revolution" },
-    { slug: "nazism-hitler", name: "Nazism and the Rise of Hitler", description: "Hitler's rise, Nazi ideology, World War II" },
-    { slug: "india-size-location", name: "India - Size and Location", description: "India's location, neighbors, size" },
-    { slug: "physical-features", name: "Physical Features of India", description: "Mountains, plains, deserts, coastal areas" },
-    { slug: "democracy", name: "What is Democracy? Why Democracy?", description: "Features and merits of democracy" },
-    { slug: "constitutional-design", name: "Constitutional Design", description: "Making of Indian Constitution" },
-  ],
-};
+// Chapters are created from the JSON lesson files in data/lessons/
+// This makes JSON files the single source of truth for educational content
 
 // =============================================================================
 // SEED FUNCTION
@@ -347,52 +277,19 @@ export async function seed() {
     });
 
     console.log(`✅ ${gradeSubjectMap.size} class-subject mappings ready`);
+    console.log("🎉 Structural seeding complete!");
 
-    // 4. Insert chapters for each grade-subject combination
-    console.log("📖 Inserting chapters...");
-    
-    let chapterCount = 0;
-
-    for (const [curriculumSlug, gradesMappings] of Object.entries(gradeSubjectMappings)) {
-      for (const [gradeSlug, subjectSlugs] of Object.entries(gradesMappings)) {
-        const classId = classMap.get(`${curriculumSlug}-${gradeSlug}`);
-        if (!classId) continue;
-
-        for (const subjectSlug of subjectSlugs) {
-          const gradeSubjectId = gradeSubjectMap.get(`${classId}-${subjectSlug}`);
-          if (!gradeSubjectId) continue;
-
-          const subjectChapters = chaptersBySubject[subjectSlug];
-          if (!subjectChapters) continue;
-
-          for (let i = 0; i < subjectChapters.length; i++) {
-            const chapter = subjectChapters[i];
-            await db
-              .insert(chapters)
-              .values({
-                gradeSubjectId,
-                slug: chapter.slug,
-                name: chapter.name,
-                description: chapter.description,
-                sortOrder: i + 1,
-              })
-              .onConflictDoNothing();
-            chapterCount++;
-          }
-        }
-      }
-    }
-
-    console.log(`✅ ${chapterCount} chapters inserted`);
-    console.log("🎉 Basic seeding complete!");
-
-    // 5. Seed lessons from JSON files (optional)
+    // 4. Seed chapters and lessons from JSON files
+    console.log("\n📚 Seeding educational content (chapters + lessons)...");
+    console.log("Note: Chapters are created from JSON files (single source of truth)");
     try {
       const { seedLessons } = await import("./seedLessons.js");
       await seedLessons();
+      console.log("🎉 Complete seeding finished!");
     } catch (error) {
-      // Don't fail if lesson seeding fails - it's optional
-      console.log("⚠️  Lesson seeding skipped or failed (this is optional)");
+      console.error("❌ Lesson seeding failed:", error);
+      console.log("⚠️  Structural data seeded, but educational content (chapters/lessons) failed");
+      console.log("💡 You can run seedLessons separately or check your JSON files");
     }
 
   } catch (error) {

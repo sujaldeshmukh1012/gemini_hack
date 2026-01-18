@@ -1,28 +1,76 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { LessonViewer } from "../components/LessonViewer";
 import type { UnitLessons } from '../types';
+import { useAuth } from '../hooks/useAuth';
 
-interface LocationState {
-  chapterId?: string;
-}
-
-export const LessonViewerPage = () => {
+export const LessonPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const state = location.state as LocationState | null;
-  const chapterId = state?.chapterId || new URLSearchParams(location.search).get('chapterId');
+  const { classId, subjectId, unit: chapterSlug } = useParams<{
+    classId: string;
+    subjectId: string;
+    unit: string;
+  }>();
+  
+  const { user } = useAuth();
 
   const [book, setBook] = useState<UnitLessons[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [chapterId, setChapterId] = useState<string | null>(null);
+
+  // Resolve chapter ID from slug
+  useEffect(() => {
+    const resolveChapterId = async () => {
+      if (!classId || !subjectId || !chapterSlug) {
+        setError('Missing route parameters.');
+        setIsLoading(false);
+        return;
+      }
+
+      if (!user?.profile?.curriculumId) {
+        setError('User profile not available.');
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Fetch subjects to find the chapter by slug
+        // Note: classId in route might be a slug, so we need to resolve it
+        // For now, try using it directly as ID, or we could look it up
+        const response = await fetch(`http://localhost:8000/api/curriculum/${user.profile.curriculumId}/grades/${classId}/subjects`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch subjects');
+        }
+
+        const subjects = await response.json();
+        const subject = subjects.find((s: any) => s.slug === subjectId);
+        
+        if (!subject) {
+          throw new Error('Subject not found');
+        }
+
+        const chapter = subject.chapters.find((c: any) => c.slug === chapterSlug);
+        
+        if (!chapter) {
+          throw new Error('Chapter not found');
+        }
+
+        setChapterId(chapter.id);
+      } catch (err) {
+        console.error('Error resolving chapter:', err);
+        setError(err instanceof Error ? err.message : 'Failed to resolve chapter.');
+        setIsLoading(false);
+      }
+    };
+
+    resolveChapterId();
+  }, [classId, subjectId, chapterSlug, user?.profile?.curriculumId]);
 
   useEffect(() => {
     const fetchLessons = async () => {
       if (!chapterId) {
-        setError('No chapter ID provided. Please select a chapter from the dashboard.');
-        setIsLoading(false);
-        return;
+        return; // Wait for chapter ID to be resolved
       }
 
       setIsLoading(true);
@@ -121,7 +169,7 @@ export const LessonViewerPage = () => {
 
   return (
     <div>
-      <LessonViewer book={book} />
+      <LessonViewer book={book} autoStartNarration={false} />
     </div>
   );
 };

@@ -250,13 +250,21 @@ function Dashboard() {
                     <p className="text-slate-600 mb-4">{selectedChapter.description}</p>
                     <div className="mt-6 flex gap-4">
                       <button 
-                        onClick={() => selectedChapter && navigate('/lesson-viewer', { state: { chapterId: selectedChapter.id } })}
+                        onClick={() => {
+                          if (selectedChapter && selectedSubject && userProfile) {
+                            navigate(`/${userProfile.classId}/${selectedSubject.slug}/${selectedChapter.slug}`);
+                          }
+                        }}
                         className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all"
                       >
                         Start Learning
                       </button>
                       <button 
-                        onClick={() => selectedChapter && navigate('/lesson-viewer', { state: { chapterId: selectedChapter.id } })}
+                        onClick={() => {
+                          if (selectedChapter && selectedSubject && userProfile) {
+                            navigate(`/${userProfile.classId}/${selectedSubject.slug}/${selectedChapter.slug}`);
+                          }
+                        }}
                         className="px-6 py-3 border-2 border-slate-200 text-slate-700 rounded-lg font-semibold hover:bg-slate-50 transition-all"
                       >
                         View Lesson
