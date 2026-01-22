@@ -9,7 +9,8 @@
     "push:db": "drizzle-kit push",
     "studio:db": "drizzle-kit studio",
     "seed": "tsx src/db/seed.ts",
-    "seed:lessons": "tsx src/db/seedLessons.ts"
+    "seed:lessons": "tsx src/db/seedLessons.ts",
+    "test:live-api": "tsx src/test-live-api.ts"
   },
   "keywords": [],
   "author": "",
@@ -27,7 +28,10 @@
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "pdf-parse": "^1.1.4",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "@google/genai": "^1.0.0",
+    "mic": "^2.1.2",
+    "speaker": "^0.5.4"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

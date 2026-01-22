@@ -11,54 +11,26 @@ const __dirname = dirname(__filename);
 
 const LESSONS_DATA_DIR = join(__dirname, "../../data/lessons");
 
-/**
- * Seed lessons from JSON files in the data/lessons directory
- * 
- * Expected file structure:
- * - data/lessons/
- *   - cbse_class11_physics.json
- *   - cbse_class12_chemistry.json
- *   - icse_class9_mathematics.json
- *   - etc.
- * 
- * Each JSON file should contain an array of UnitLessons objects (one per chapter/unit):
- * [
- *   {
- *     "unitTitle": "Unit 1: Kinematics",
- *     "unitDescription": "...",
- *     "lessons": [...]
- *   },
- *   {
- *     "unitTitle": "Unit 2: Forces",
- *     "unitDescription": "...",
- *     "lessons": [...]
- *   }
- * ]
- * 
- * The filename format: {curriculum}_{class}_{subject}.json
- * Examples: cbse_class11_physics.json, icse_class9_mathematics.json
- */
 export async function seedLessons() {
-  console.log("Seeding lessons from JSON files...");
-
   try {
     let files: string[];
     try {
       files = await readdir(LESSONS_DATA_DIR);
     } catch (error) {
-      console.log(`Lessons data directory not found: ${LESSONS_DATA_DIR}`);
+      console.log(`Lessons directory not found: ${LESSONS_DATA_DIR}`);
       return;
     }
 
     const jsonFiles = files.filter(f => f.endsWith('.json') && !f.endsWith('.example.json'));
     
     if (jsonFiles.length === 0) {
-      console.log("No JSON files found in lessons data directory.");
       return;
     }
 
+    console.log(`Found ${jsonFiles.length} JSON file(s)\n`);
+
     let processedFiles = 0;
-    let processedUnits = 0;
+    let processedChapters = 0;
     let processedLessons = 0;
     let errorCount = 0;
 
@@ -91,9 +63,6 @@ export async function seedLessons() {
         const classSlug = parts[1].replace('class', 'class-');
         const subjectSlug = parts.slice(2).join('-');
 
-        console.log(`\nProcessing ${filename}...`);
-        console.log(`Curriculum: ${curriculumSlug}, Class: ${classSlug}, Subject: ${subjectSlug}`);
-
         const [foundClassWithCurriculum] = await db
           .select({
             classId: classes.id,
@@ -109,7 +78,8 @@ export async function seedLessons() {
           .limit(1);
 
         if (!foundClassWithCurriculum) {
-          console.error(`Class not found: ${curriculumSlug}/${classSlug} for ${filename}`);
+          console.error(`Class not found: ${curriculumSlug}/${classSlug}`);
+          console.error(`Make sure this combination exists in seed.ts`);
           errorCount++;
           continue;
         }
@@ -122,7 +92,7 @@ export async function seedLessons() {
           .limit(1);
 
         if (!subject) {
-          console.error(`Subject not found: ${subjectSlug} for ${filename}`);
+          console.error(`Subject not found: ${subjectSlug}`);
           errorCount++;
           continue;
         }
@@ -240,25 +210,27 @@ export async function seedLessons() {
             lessonCount++;
             processedLessons++;
           }
-
-          console.log(`      → ${lessonCount} lessons processed`);
-          processedUnits++;
         }
 
         processedFiles++;
       } catch (error) {
-        console.error(`Error processing ${filename}:`, error);
+        console.error(`\n   ❌ Error processing ${filename}:`);
         if (error instanceof Error) {
-          console.error(`   ${error.message}`);
+          console.error(`      ${error.message}`);
         }
         errorCount++;
       }
     }
 
-    console.log(`Processed: ${processedFiles} file(s), ${processedUnits} unit(s), ${processedLessons} lesson(s)`);
+    console.log("\n" + "=".repeat(60));
+    console.log("🎉 Educational content seeding complete!");
+    console.log(`📄 Files processed: ${processedFiles}/${jsonFiles.length}`);
+    console.log(`📖 Chapters created/updated: ${processedChapters}`);
+    console.log(`📝 Lessons created/updated: ${processedLessons}`);
     if (errorCount > 0) {
-      console.log(`Errors: ${errorCount} file(s)`);
+      console.log(`❌ Errors: ${errorCount}`);
     }
+    console.log("=".repeat(60));
   } catch (error) {
     console.error("Lesson seeding failed:", error);
     throw error;
