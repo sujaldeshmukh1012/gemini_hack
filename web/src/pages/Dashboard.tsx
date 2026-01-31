@@ -188,6 +188,12 @@ function Dashboard() {
                 >
                   <span>+</span> Edit Chapters
                 </button>
+                <button
+                  onClick={() => navigate('/accessibility-guide')}
+                  className="w-full mt-2 p-3 text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-all flex items-center justify-center gap-2"
+                >
+                  Accessibility Guide
+                </button>
               </div>
             </div>
           </aside>

@@ -14,6 +14,8 @@ import brailleRouter from "./routes/braille.js";
 import lessonsRouter from "./routes/lessons.js";
 import curriculumRouter from "./routes/curriculum.js";
 import adminRouter from "./routes/admin.js";
+import storyRouter from "./routes/story.js";
+import { storageConfig } from "./utils/storage.js";
 
 const app = express();
 // CORS configuration
@@ -27,6 +29,10 @@ app.use(
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Serve generated media (story slides, video assets)
+if (storageConfig.provider === "local") {
+  app.use("/media", express.static(storageConfig.localRoot));
+}
 
 app.use(
   session({
@@ -53,6 +59,7 @@ app.use("/api/braille", brailleRouter);
 app.use("/api/lessons", lessonsRouter);
 app.use("/api/curriculum", curriculumRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/story", storyRouter);
 
 async function startServer() {
   const PORT = process.env.PORT || 8000;

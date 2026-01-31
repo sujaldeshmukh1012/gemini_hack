@@ -2,10 +2,22 @@
 // USER & AUTHENTICATION TYPES
 // =============================================================================
 
+export interface AccessibilityPreferences {
+  adhd?: boolean;
+  visuallyImpaired?: boolean;
+  deaf?: boolean;
+  focusMode?: boolean;
+  highContrast?: boolean;
+  largeText?: boolean;
+  reduceMotion?: boolean;
+  captionsOn?: boolean;
+}
+
 export interface UserProfile {
   curriculumId: string;
   classId: string;
   chapterIds: string[];
+  accessibility?: AccessibilityPreferences;
 }
 
 export interface User {
@@ -218,6 +230,38 @@ export interface NoteContent {
   updatedAt?: string;
 }
 
+// =============================================================================
+// STORY MODE TYPES
+// =============================================================================
+
+export interface StorySlide {
+  id: string;
+  index: number;
+  title: string;
+  narration: string;
+  caption: string;
+  imagePrompt: string;
+  imageUrl?: string;
+  signKeywords?: string[];
+}
+
+export interface StoryAsset {
+  id: string;
+  storyKey: string;
+  classId: string;
+  subjectId: string;
+  chapterSlug: string;
+  sectionSlug: string;
+  microsectionId?: string | null;
+  status: "pending" | "ready" | "error";
+  renderType: "slides" | "video";
+  slides: StorySlide[];
+  videoUrl?: string | null;
+  error?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // LessonContent - legacy format for backward compatibility
 export interface LessonContent {
   introduction: string;
@@ -348,7 +392,7 @@ export interface Chapter {
 // SETUP PAGE TYPES
 // =============================================================================
 
-export type SetupStep = 'curriculum' | 'grade' | 'chapters';
+export type SetupStep = 'curriculum' | 'grade' | 'accessibility' | 'chapters';
 
 export interface SetupStepInfo {
   id: SetupStep;
@@ -360,4 +404,5 @@ export interface UserSetupData {
   curriculumId: string;
   classId: string;
   chapterIds: string[];
+  accessibility?: AccessibilityPreferences;
 }

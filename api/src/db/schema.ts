@@ -1,6 +1,6 @@
 import { pgTable, text, timestamp, boolean, uuid, jsonb, integer, unique } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import type { UserProfile, LessonContentUnion, UnitLessons } from "../../types/index.js";
+import type { UserProfile, LessonContentUnion, UnitLessons, StorySlide } from "../../types/index.js";
 
 // =============================================================================
 // USERS TABLE
@@ -113,6 +113,27 @@ export const lessons = pgTable("lessons", {
 }, (table) => ({
   uniqueSlugPerChapter: unique().on(table.chapterId, table.slug),
 }));
+
+// =============================================================================
+// STORY ASSETS TABLE (Story mode slides + video placeholders)
+// =============================================================================
+
+export const storyAssets = pgTable("story_assets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  storyKey: text("story_key").notNull().unique(),
+  classId: text("class_id").notNull(),
+  subjectId: text("subject_id").notNull(),
+  chapterSlug: text("chapter_slug").notNull(),
+  sectionSlug: text("section_slug").notNull(),
+  microsectionId: text("microsection_id"),
+  status: text("status").notNull().default("pending"),
+  renderType: text("render_type").notNull().default("slides"),
+  slides: jsonb("slides").$type<StorySlide[]>().notNull(),
+  videoUrl: text("video_url"),
+  error: text("error"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
 // =============================================================================
 // USER_CHAPTERS TABLE (Which chapters a user has selected to study)

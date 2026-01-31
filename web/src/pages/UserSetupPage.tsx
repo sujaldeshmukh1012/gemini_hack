@@ -5,6 +5,7 @@ import {
   fetchCurricula,
   fetchSubjectsWithChapters,
 } from '../data/curriculumData';
+import { saveAccessibilityPreferences } from '../utils/accessibility';
 import type { 
   SetupStep, 
   SetupStepInfo, 
@@ -17,6 +18,7 @@ import type {
 const STEPS: SetupStepInfo[] = [
   { id: 'curriculum', title: 'Curriculum', subtitle: 'Which board do you follow?' },
   { id: 'grade', title: 'Grade', subtitle: 'What class are you in?' },
+  { id: 'accessibility', title: 'Accessibility', subtitle: 'Tell us how you learn best' },
   { id: 'chapters', title: 'Chapters', subtitle: 'What would you like to learn?' },
 ];
 
@@ -24,6 +26,15 @@ interface SetupData {
   curriculumId: string;
   classId: string;
   chapterIds: string[];
+  accessibility: {
+    adhd: boolean;
+    visuallyImpaired: boolean;
+    deaf: boolean;
+    focusMode: boolean;
+    largeText: boolean;
+    highContrast: boolean;
+    captionsOn: boolean;
+  };
 }
 
 export const UserSetupPage = () => {
@@ -33,7 +44,16 @@ export const UserSetupPage = () => {
   const [setupData, setSetupData] = useState<SetupData>({
     curriculumId: '',
     classId: '',
-    chapterIds: []
+    chapterIds: [],
+    accessibility: {
+      adhd: false,
+      visuallyImpaired: false,
+      deaf: false,
+      focusMode: false,
+      largeText: false,
+      highContrast: false,
+      captionsOn: true
+    }
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +66,18 @@ export const UserSetupPage = () => {
   
   // UI state for expanded subjects
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (user?.profile?.accessibility) {
+      setSetupData(prev => ({
+        ...prev,
+        accessibility: {
+          ...prev.accessibility,
+          ...user.profile?.accessibility
+        }
+      }));
+    }
+  }, [user]);
 
   // Fetch curricula on mount
   useEffect(() => {
@@ -88,6 +120,8 @@ export const UserSetupPage = () => {
         return setupData.curriculumId !== '';
       case 'grade':
         return setupData.classId !== '';
+      case 'accessibility':
+        return true;
       case 'chapters':
         return setupData.chapterIds.length > 0;
       default:
@@ -151,6 +185,32 @@ export const UserSetupPage = () => {
     }));
   };
 
+  const updateAccessibility = (key: keyof SetupData['accessibility'], value: boolean) => {
+    setSetupData(prev => {
+      const next = {
+        ...prev.accessibility,
+        [key]: value
+      };
+
+      // Smart defaults based on needs
+      if (key === 'adhd' && value) {
+        next.focusMode = true;
+      }
+      if (key === 'visuallyImpaired' && value) {
+        next.largeText = true;
+        next.highContrast = true;
+      }
+      if (key === 'deaf' && value) {
+        next.captionsOn = true;
+      }
+
+      return {
+        ...prev,
+        accessibility: next
+      };
+    });
+  };
+
   const toggleAllChaptersInSubject = (subject: SubjectWithChapters) => {
     const subjectChapterIds = subject.chapters.map(c => c.id);
     const allSelected = subjectChapterIds.every(id => setupData.chapterIds.includes(id));
@@ -179,7 +239,8 @@ export const UserSetupPage = () => {
           profile: {
             curriculumId: setupData.curriculumId,
             classId: setupData.classId,
-            chapterIds: setupData.chapterIds
+            chapterIds: setupData.chapterIds,
+            accessibility: setupData.accessibility
           },
           curriculumId: setupData.curriculumId,
           classId: setupData.classId
@@ -189,6 +250,7 @@ export const UserSetupPage = () => {
       const data = await response.json();
 
       if (response.ok && data.user?.isProfileComplete) {
+        saveAccessibilityPreferences(setupData.accessibility);
         navigate('/dashboard');
       } else {
         setError(data.error || 'Failed to save profile');
@@ -366,6 +428,91 @@ export const UserSetupPage = () => {
               </div>
             )}
 
+            {/* Step 3: Accessibility */}
+            {currentStep === 'accessibility' && (
+              <div className="space-y-6">
+                <p className="text-slate-600">
+                  Help us personalize your learning experience. Choose any that apply. You can change these later.
+                </p>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <label className="flex items-start gap-3 p-4 border-2 rounded-xl border-slate-200 hover:border-blue-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={setupData.accessibility.adhd}
+                      onChange={(e) => updateAccessibility('adhd', e.target.checked)}
+                    />
+                    <div>
+                      <h3 className="font-semibold text-slate-900">ADHD / Focus Support</h3>
+                      <p className="text-sm text-slate-600">Enable focus mode, chunked lessons, and gentle pacing.</p>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 p-4 border-2 rounded-xl border-slate-200 hover:border-blue-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={setupData.accessibility.visuallyImpaired}
+                      onChange={(e) => updateAccessibility('visuallyImpaired', e.target.checked)}
+                    />
+                    <div>
+                      <h3 className="font-semibold text-slate-900">Visually Impaired</h3>
+                      <p className="text-sm text-slate-600">Large text, high contrast, and braille-ready lessons.</p>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 p-4 border-2 rounded-xl border-slate-200 hover:border-blue-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={setupData.accessibility.deaf}
+                      onChange={(e) => updateAccessibility('deaf', e.target.checked)}
+                    />
+                    <div>
+                      <h3 className="font-semibold text-slate-900">Deaf / Hard of Hearing</h3>
+                      <p className="text-sm text-slate-600">Always show captions and visual cues.</p>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                  <h4 className="font-semibold text-slate-800 mb-3">Preferences</h4>
+                  <div className="grid md:grid-cols-2 gap-3">
+                    <label className="flex items-center gap-3 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={setupData.accessibility.focusMode}
+                        onChange={(e) => updateAccessibility('focusMode', e.target.checked)}
+                      />
+                      Focus mode by default
+                    </label>
+                    <label className="flex items-center gap-3 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={setupData.accessibility.largeText}
+                        onChange={(e) => updateAccessibility('largeText', e.target.checked)}
+                      />
+                      Large text
+                    </label>
+                    <label className="flex items-center gap-3 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={setupData.accessibility.highContrast}
+                        onChange={(e) => updateAccessibility('highContrast', e.target.checked)}
+                      />
+                      High contrast
+                    </label>
+                    <label className="flex items-center gap-3 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={setupData.accessibility.captionsOn}
+                        onChange={(e) => updateAccessibility('captionsOn', e.target.checked)}
+                      />
+                      Captions always on
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Step 3: Chapters (grouped by subject) */}
             {currentStep === 'chapters' && (
               <div className="space-y-4">
@@ -501,7 +648,7 @@ export const UserSetupPage = () => {
                   : 'text-slate-400 cursor-not-allowed'
               }`}
             >
-              ← Back
+              Back
             </button>
 
             {isLastStep ? (

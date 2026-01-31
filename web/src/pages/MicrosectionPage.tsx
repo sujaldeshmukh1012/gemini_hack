@@ -2,14 +2,17 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { MathText } from '../components/MathText';
+import { StoryPlayer } from '../components/StoryPlayer';
 import type { 
   Microsection, 
   ArticleMicrosection, 
   VideoMicrosection, 
   QuizMicrosection, 
   PracticeMicrosection,
-  ArticleContent
+  ArticleContent,
+  StoryAsset
 } from '../types';
+import { extractArticleRawText } from '../utils/textExtractor';
 
 // Article Viewer Component
 const ArticleViewer: React.FC<{ content: ArticleContent }> = ({ content }) => {
@@ -98,7 +101,12 @@ const ArticleViewer: React.FC<{ content: ArticleContent }> = ({ content }) => {
 };
 
 // Video Viewer Component
-const VideoViewer: React.FC<{ content: VideoMicrosection['content'] }> = ({ content }) => {
+const VideoViewer: React.FC<{
+  content: VideoMicrosection['content'];
+  story?: StoryAsset | null;
+  onGenerateStory?: () => void;
+  isStoryLoading?: boolean;
+}> = ({ content, story, onGenerateStory, isStoryLoading }) => {
   const getEmbedUrl = (url: string) => {
     if (url.includes('youtube.com') || url.includes('youtu.be')) {
       const videoId = url.includes('youtu.be') 
@@ -113,6 +121,10 @@ const VideoViewer: React.FC<{ content: VideoMicrosection['content'] }> = ({ cont
     return url;
   };
 
+  if (!content.url && story?.status === 'ready') {
+    return <StoryPlayer story={story} autoPlay={false} />;
+  }
+
   return (
     <div>
       <div className="aspect-video bg-slate-900 rounded-xl overflow-hidden mb-6">
@@ -125,14 +137,22 @@ const VideoViewer: React.FC<{ content: VideoMicrosection['content'] }> = ({ cont
             title={content.title}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-slate-400">
-            <div className="text-center">
+          <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
+            <div className="text-center mb-4">
               <svg className="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p>Video not available</p>
             </div>
+            {onGenerateStory && (
+              <button
+                onClick={onGenerateStory}
+                className="px-4 py-2 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 font-medium hover:bg-indigo-100"
+              >
+                {isStoryLoading ? 'Generating Story...' : 'Generate Story Video'}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -358,6 +378,13 @@ export function MicrosectionPage() {
   const [data, setData] = useState<MicrosectionApiResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [story, setStory] = useState<StoryAsset | null>(null);
+  const [isStoryLoading, setIsStoryLoading] = useState(false);
+  const [storyError, setStoryError] = useState<string | null>(null);
+  const [brailleResult, setBrailleResult] = useState<{ brf?: string; fullBraille?: string } | null>(null);
+  const [brailleError, setBrailleError] = useState<string | null>(null);
+  const [isBrailleOpen, setIsBrailleOpen] = useState(false);
+  const [isBrailleLoading, setIsBrailleLoading] = useState(false);
 
   useEffect(() => {
     const fetchMicrosection = async () => {
@@ -388,6 +415,92 @@ export function MicrosectionPage() {
 
     fetchMicrosection();
   }, [classId, subjectId, chapterSlug, sectionSlug, microsectionId]);
+
+  useEffect(() => {
+    setStory(null);
+    setStoryError(null);
+  }, [classId, subjectId, chapterSlug, sectionSlug, microsectionId]);
+
+  const fetchStory = async () => {
+    if (!classId || !subjectId || !chapterSlug || !sectionSlug) return;
+    setIsStoryLoading(true);
+    setStoryError(null);
+    try {
+      const response = await fetch('http://localhost:8000/api/story/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          classId,
+          subjectId,
+          chapterSlug,
+          sectionSlug
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate story');
+      }
+
+      const storyData: StoryAsset = await response.json();
+      setStory(storyData);
+    } catch (err) {
+      setStoryError(err instanceof Error ? err.message : 'Failed to generate story');
+    } finally {
+      setIsStoryLoading(false);
+    }
+  };
+
+  const openBraille = async () => {
+    if (!data || data.microsection.type !== 'article') {
+      setBrailleError('Braille is currently available for article lessons.');
+      setIsBrailleOpen(true);
+      return;
+    }
+
+    setIsBrailleLoading(true);
+    setBrailleError(null);
+    setIsBrailleOpen(true);
+
+    try {
+      const article = data.microsection as ArticleMicrosection;
+      const lessonText = extractArticleRawText(article.content);
+
+      const response = await fetch('http://localhost:8000/api/braille/convert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lesson: lessonText })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate braille');
+      }
+
+      const brailleData = await response.json();
+      setBrailleResult({ brf: brailleData.brf, fullBraille: brailleData.fullBraille });
+    } catch (err) {
+      setBrailleError(err instanceof Error ? err.message : 'Failed to generate braille');
+    } finally {
+      setIsBrailleLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleStoryOpen = () => {
+      fetchStory();
+    };
+    const handleBrailleOpen = () => {
+      openBraille();
+    };
+
+    window.addEventListener('story-open', handleStoryOpen as EventListener);
+    window.addEventListener('braille-open', handleBrailleOpen as EventListener);
+    return () => {
+      window.removeEventListener('story-open', handleStoryOpen as EventListener);
+      window.removeEventListener('braille-open', handleBrailleOpen as EventListener);
+    };
+  }, [data, classId, subjectId, chapterSlug, sectionSlug]);
 
   const handleNavigate = (direction: 'prev' | 'next') => {
     if (!data) return;
@@ -467,6 +580,7 @@ export function MicrosectionPage() {
             <button 
               onClick={() => navigate(`/${classId}/${subjectId}/${chapterSlug}`)}
               className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              aria-label="Back to chapter"
             >
               <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -491,12 +605,49 @@ export function MicrosectionPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-6 py-8">
+      <main className="max-w-4xl mx-auto px-6 py-8 focus-mode-surface">
+        <div className="mb-8 flex flex-wrap items-center gap-3">
+          <button
+            onClick={fetchStory}
+            className="px-4 py-2 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 font-medium hover:bg-indigo-100 disabled:opacity-60"
+            disabled={isStoryLoading}
+          >
+            {isStoryLoading ? 'Generating Story...' : 'Story Mode'}
+          </button>
+          <button
+            onClick={openBraille}
+            className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 font-medium hover:bg-slate-50 disabled:opacity-60"
+            disabled={isBrailleLoading}
+          >
+            Braille Output
+          </button>
+          {storyError && (
+            <span className="text-sm text-red-600">{storyError}</span>
+          )}
+        </div>
+
+        {isStoryLoading && (
+          <div className="mb-8 p-4 rounded-xl border border-indigo-100 bg-indigo-50 text-indigo-700">
+            Generating story slides. This can take about a minute.
+          </div>
+        )}
+
+        {story && story.status === 'ready' && microsection.type !== 'video' && (
+          <div className="mb-10">
+            <StoryPlayer story={story} autoPlay={false} />
+          </div>
+        )}
+
         {microsection.type === 'article' && (
           <ArticleViewer content={(microsection as ArticleMicrosection).content} />
         )}
         {microsection.type === 'video' && (
-          <VideoViewer content={(microsection as VideoMicrosection).content} />
+          <VideoViewer
+            content={(microsection as VideoMicrosection).content}
+            story={story}
+            onGenerateStory={fetchStory}
+            isStoryLoading={isStoryLoading}
+          />
         )}
         {microsection.type === 'quiz' && (
           <QuizViewer content={(microsection as QuizMicrosection).content} />
@@ -505,6 +656,47 @@ export function MicrosectionPage() {
           <PracticeViewer content={(microsection as PracticeMicrosection).content} />
         )}
       </main>
+
+      {isBrailleOpen && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6">
+          <div className="bg-white max-w-3xl w-full rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h3 className="text-lg font-semibold text-slate-900">Braille Output</h3>
+              <button
+                onClick={() => setIsBrailleOpen(false)}
+                className="text-slate-500 hover:text-slate-700"
+                aria-label="Close braille output"
+              >
+                X
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {isBrailleLoading && (
+                <div className="text-slate-600">Generating braille...</div>
+              )}
+              {brailleError && (
+                <div className="text-red-600">{brailleError}</div>
+              )}
+              {brailleResult?.fullBraille && (
+                <div>
+                  <p className="text-sm text-slate-500 mb-2">Full Braille</p>
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap">
+                    {brailleResult.fullBraille}
+                  </div>
+                </div>
+              )}
+              {brailleResult?.brf && (
+                <div>
+                  <p className="text-sm text-slate-500 mb-2">BRF (Ready for embossing)</p>
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap">
+                    {brailleResult.brf}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Navigation Footer */}
       <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4">
