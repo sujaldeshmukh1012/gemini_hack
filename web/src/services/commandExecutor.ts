@@ -22,17 +22,6 @@ export class CommandExecutor {
    * Debug: Log current dependencies state
    */
   private logDependencies() {
-    console.log('[CommandExecutor] Dependencies:', {
-      hasUser: !!this.deps.user,
-      userId: this.deps.user?.id,
-      userProfile: this.deps.user?.profile,
-      subjectsCount: this.deps.availableSubjects.length,
-      subjects: this.deps.availableSubjects.map(s => ({
-        name: s.name,
-        slug: s.slug,
-        chaptersCount: s.chapters.length
-      }))
-    });
   }
 
   /**

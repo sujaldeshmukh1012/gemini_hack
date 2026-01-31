@@ -11,14 +11,22 @@ import type {
   ArticleContent
 } from '../types';
 
+// Helper to format text: bold **text** and convert newlines to <br/>
+function formatText(text: string): string {
+  if (!text) return '';
+  const withBold = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Replace escaped newlines (\n) and literal /n with HTML line breaks
+  return withBold.replace(/\\n/g, '<br/>').replace(/\/n/g, '<br/>');
+}
+
 // Article Viewer Component
 const ArticleViewer: React.FC<{ content: ArticleContent }> = ({ content }) => {
   return (
     <div className="prose prose-slate max-w-none">
       {/* Introduction */}
       {content.introduction && (
-        <div className="text-lg text-slate-600 mb-8 leading-relaxed">
-          <MathText text={content.introduction} />
+          <div className="text-lg text-slate-600 mb-8 leading-relaxed">
+          <MathText text={formatText(content.introduction)} />
         </div>
       )}
 
@@ -27,13 +35,13 @@ const ArticleViewer: React.FC<{ content: ArticleContent }> = ({ content }) => {
         <div key={i} className="mb-10">
           <h2 className="text-2xl font-bold text-slate-900 mb-4">{concept.conceptTitle}</h2>
           <div className="text-slate-700 mb-4 leading-relaxed">
-            <MathText text={concept.explanation} />
+            <MathText text={formatText(concept.explanation)} />
           </div>
           {concept.example && (
             <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg mb-4">
               <p className="font-semibold text-blue-800 mb-1">Example</p>
               <div className="text-blue-900">
-                <MathText text={concept.example} />
+                <MathText text={formatText(concept.example)} />
               </div>
             </div>
           )}
@@ -60,7 +68,7 @@ const ArticleViewer: React.FC<{ content: ArticleContent }> = ({ content }) => {
             {content.summary.map((point, i) => (
               <li key={i} className="flex items-start gap-2">
                 <span className="text-green-500 mt-1">✓</span>
-                <span className="text-slate-700"><MathText text={point} /></span>
+                <span className="text-slate-700"><MathText text={formatText(point)} /></span>
               </li>
             ))}
           </ul>
@@ -80,13 +88,13 @@ const ArticleViewer: React.FC<{ content: ArticleContent }> = ({ content }) => {
                       {i + 1}
                     </span>
                     <span className="flex-1 font-medium text-slate-800">
-                      <MathText text={q.question} />
+                      <MathText text={formatText(q.question)} />
                     </span>
                     <span className="text-slate-400 group-open:rotate-180 transition-transform">▼</span>
                   </div>
                 </summary>
                 <div className="ml-9 pl-3 border-l-2 border-green-300 py-2 text-green-800">
-                  <MathText text={q.answer} />
+                  <MathText text={formatText(q.answer)} />
                 </div>
               </details>
             ))}
@@ -112,6 +120,7 @@ const VideoViewer: React.FC<{ content: VideoMicrosection['content'] }> = ({ cont
     }
     return url;
   };
+  console.log('Video content:', content);
 
   return (
     <div>

@@ -14,6 +14,7 @@ import brailleRouter from "./routes/braille.js";
 import lessonsRouter from "./routes/lessons.js";
 import curriculumRouter from "./routes/curriculum.js";
 import adminRouter from "./routes/admin.js";
+import uploadRouter from "./routes/upload.js";
 
 const app = express();
 // CORS configuration
@@ -53,6 +54,7 @@ app.use("/api/braille", brailleRouter);
 app.use("/api/lessons", lessonsRouter);
 app.use("/api/curriculum", curriculumRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/upload", uploadRouter);
 
 async function startServer() {
   const PORT = process.env.PORT || 8000;

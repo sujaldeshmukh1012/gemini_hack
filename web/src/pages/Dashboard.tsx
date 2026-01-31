@@ -261,33 +261,6 @@ function Dashboard() {
               </div>
             )}
           </main>
-
-          {/* Right Sidebar - Profile Info */}
-          <aside className="w-64 shrink-0">
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sticky top-24">
-              <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-4">
-                Your Profile
-              </h2>
-              
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs font-semibold text-slate-500 mb-1">Board</p>
-                  <p className="font-medium text-slate-900">{getCurriculumName(userProfile.curriculumId)}</p>
-                </div>
-                
-                <div>
-                  <p className="text-xs font-semibold text-slate-500 mb-1">Grade</p>
-                  <p className="font-medium text-slate-900">{getGradeName(userProfile.classId)}</p>
-                </div>
-                
-                <div>
-                  <p className="text-xs font-semibold text-slate-500 mb-2">Chapters Selected</p>
-                  <p className="font-medium text-slate-900">{totalChapters} chapters</p>
-                  <p className="text-xs text-slate-500">across {subjectsWithChapters.length} subjects</p>
-                </div>
-              </div>
-            </div>
-          </aside>
         </div>
       </div>
     </div>

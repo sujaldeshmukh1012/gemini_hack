@@ -1,47 +1,11 @@
 import { Router } from "express";
 import { db } from "../db/index.js";
-import { chapters, lessons as lessonsTable, classes, curricula } from "../db/schema.js";
+import { chapters, lessons as lessonsTable, classes, curricula, gradeSubjects, subjects } from "../db/schema.js";
 import { eq, and } from "drizzle-orm";
 import type { Unit, UnitLessons, Book, StructuredChapter, StructuredCurriculum } from "../../types/index.js";
 import { callGeminiJson, hasGeminiApiKey } from "../utils/gemini.js";
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const lessonsRouter = Router();
-
-/**
- * Helper function to resolve classId (UUID or slug) to curriculum_class format for file lookup
- */
-async function resolveClassToFilePrefix(classIdOrSlug: string): Promise<string | null> {
-  // Check if it looks like a UUID
-  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classIdOrSlug);
-  
-  if (isUUID) {
-    // Look up class by UUID
-    const [classEntity] = await db
-      .select({
-        classSlug: classes.slug,
-        curriculumSlug: curricula.slug,
-      })
-      .from(classes)
-      .innerJoin(curricula, eq(curricula.id, classes.curriculumId))
-      .where(eq(classes.id, classIdOrSlug))
-      .limit(1);
-    
-    if (!classEntity) return null;
-    
-    // Convert class-11 to class11 for filename
-    const classSlugForFile = classEntity.classSlug.replace('-', '');
-    return `${classEntity.curriculumSlug}_${classSlugForFile}`;
-  }
-  
-  // Assume it's already in the correct format (e.g., cbse_class11)
-  return classIdOrSlug;
-}
 
 /**
  * Generate the lesson prompt for a given unit
@@ -733,28 +697,56 @@ lessonsRouter.post("/generate-structured", async (req, res) => {
 lessonsRouter.get("/structured/:classId/:subjectId", async (req, res) => {
   try {
     const { classId, subjectId } = req.params;
-    
-    // Resolve classId (UUID or slug) to file prefix
-    const filePrefix = await resolveClassToFilePrefix(classId);
-    if (!filePrefix) {
-      return res.status(404).json({ error: "Class not found" });
+
+    // Find all chapters for this class and subject
+    // 1. Find gradeSubjectId for classId and subjectId
+    const [gradeSubject] = await db
+      .select()
+      .from(gradeSubjects)
+      .where(and(
+        eq(gradeSubjects.classId, classId),
+        eq(gradeSubjects.subjectId, subjectId)
+      ))
+      .limit(1);
+
+    if (!gradeSubject) {
+      return res.status(404).json({ error: "GradeSubject not found for class and subject" });
     }
-    
-    // Load the structured curriculum JSON file
-    const dataPath = path.join(__dirname, '../../data/lessons', `${filePrefix}_${subjectId}.json`);
-    
-    if (!fs.existsSync(dataPath)) {
-      // Fallback to generic file
-      const fallbackPath = path.join(__dirname, '../../data/lessons', 'cbse_class11_physics.json');
-      if (!fs.existsSync(fallbackPath)) {
-        return res.status(404).json({ error: "Structured curriculum data not found" });
-      }
-      const data: StructuredCurriculum = JSON.parse(fs.readFileSync(fallbackPath, 'utf-8'));
-      return res.json(data);
-    }
-    
-    const data: StructuredCurriculum = JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
-    res.json(data);
+
+    // 2. Find chapters for this gradeSubjectId
+    const chaptersList = await db
+      .select()
+      .from(chapters)
+      .where(eq(chapters.gradeSubjectId, gradeSubject.id));
+
+    // 3. For each chapter, find sections (lessons)
+    const structuredChapters = await Promise.all(chaptersList.map(async (chapter) => {
+      const lessonsList = await db
+        .select()
+        .from(lessonsTable)
+        .where(eq(lessonsTable.chapterId, chapter.id));
+
+      // Each lesson is a section with microsections in content
+      return {
+        chapterId: chapter.slug,
+        chapterTitle: chapter.name,
+        chapterDescription: chapter.description,
+        sections: lessonsList.map(lesson => ({
+          id: lesson.slug,
+          slug: lesson.slug,
+          title: lesson.title,
+          description: (typeof lesson.content === 'object' && 'description' in lesson.content && typeof lesson.content.description === 'string')
+            ? lesson.content.description
+            : '',
+          sortOrder: lesson.sortOrder,
+          microsections: (typeof lesson.content === 'object' && 'microsections' in lesson.content && Array.isArray((lesson.content as any).microsections))
+            ? (lesson.content as any).microsections
+            : [],
+        }))
+      };
+    }));
+
+    res.json(structuredChapters);
   } catch (error) {
     console.error("Error loading structured curriculum data:", error);
     res.status(500).json({ 
@@ -771,37 +763,71 @@ lessonsRouter.get("/structured/:classId/:subjectId", async (req, res) => {
 lessonsRouter.get("/structured/:classId/:subjectId/:chapterSlug", async (req, res) => {
   try {
     const { classId, subjectId, chapterSlug } = req.params;
-    
-    // Resolve classId (UUID or slug) to file prefix
-    const filePrefix = await resolveClassToFilePrefix(classId);
-    if (!filePrefix) {
-      return res.status(404).json({ error: "Class not found" });
+
+    // Look up subject UUID from slug
+    const [subject] = await db
+      .select()
+      .from(subjects)
+      .where(eq(subjects.slug, subjectId))
+      .limit(1);
+
+    if (!subject) {
+      return res.status(404).json({ error: `Subject '${subjectId}' not found` });
     }
-    
-    // Load the structured curriculum JSON file
-    const dataPath = path.join(__dirname, '../../data/lessons', `${filePrefix}_${subjectId}.json`);
-    
-    let data: StructuredCurriculum;
-    
-    if (!fs.existsSync(dataPath)) {
-      // Fallback to generic file
-      const fallbackPath = path.join(__dirname, '../../data/lessons', 'cbse_class11_physics.json');
-      if (!fs.existsSync(fallbackPath)) {
-        return res.status(404).json({ error: "Structured curriculum data not found" });
-      }
-      data = JSON.parse(fs.readFileSync(fallbackPath, 'utf-8'));
-    } else {
-      data = JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
+
+    // Find gradeSubjectId for classId and subjectId (UUID)
+    const [gradeSubject] = await db
+      .select()
+      .from(gradeSubjects)
+      .where(and(
+        eq(gradeSubjects.classId, classId),
+        eq(gradeSubjects.subjectId, subject.id)
+      ))
+      .limit(1);
+
+    if (!gradeSubject) {
+      return res.status(404).json({ error: "GradeSubject not found for class and subject" });
     }
-    
-    // Find the chapter by slug
-    const chapter = data.find(c => c.chapterId === chapterSlug);
-    
+
+    // Find chapter by slug
+    const [chapter] = await db
+      .select()
+      .from(chapters)
+      .where(and(
+        eq(chapters.gradeSubjectId, gradeSubject.id),
+        eq(chapters.slug, chapterSlug)
+      ))
+      .limit(1);
+
     if (!chapter) {
       return res.status(404).json({ error: `Chapter '${chapterSlug}' not found` });
     }
-    
-    res.json(chapter);
+
+    // Find lessons (sections) for this chapter
+    const lessonsList = await db
+      .select()
+      .from(lessonsTable)
+      .where(eq(lessonsTable.chapterId, chapter.id));
+
+    const structuredChapter = {
+      chapterId: chapter.slug,
+      chapterTitle: chapter.name,
+      chapterDescription: chapter.description,
+      sections: lessonsList.map(lesson => ({
+        id: lesson.slug,
+        slug: lesson.slug,
+        title: lesson.title,
+        description: (typeof lesson.content === 'object' && 'description' in lesson.content && typeof lesson.content.description === 'string')
+          ? lesson.content.description
+          : '',
+        sortOrder: lesson.sortOrder,
+        microsections: (typeof lesson.content === 'object' && 'microsections' in lesson.content && Array.isArray((lesson.content as any).microsections))
+          ? (lesson.content as any).microsections
+          : [],
+      }))
+    };
+
+    res.json(structuredChapter);
   } catch (error) {
     console.error("Error loading structured chapter:", error);
     res.status(500).json({ 
@@ -818,67 +844,87 @@ lessonsRouter.get("/structured/:classId/:subjectId/:chapterSlug", async (req, re
 lessonsRouter.get("/structured/:classId/:subjectId/:chapterSlug/:sectionSlug/:microsectionId", async (req, res) => {
   try {
     const { classId, subjectId, chapterSlug, sectionSlug, microsectionId } = req.params;
-    
-    // Resolve classId (UUID or slug) to file prefix
-    const filePrefix = await resolveClassToFilePrefix(classId);
-    if (!filePrefix) {
-      return res.status(404).json({ error: "Class not found" });
+
+    // Look up subject UUID from slug
+    const [subject] = await db
+      .select()
+      .from(subjects)
+      .where(eq(subjects.slug, subjectId))
+      .limit(1);
+
+    if (!subject) {
+      return res.status(404).json({ error: `Subject '${subjectId}' not found` });
     }
-    
-    // Load the structured curriculum JSON file
-    const dataPath = path.join(__dirname, '../../data/lessons', `${filePrefix}_${subjectId}.json`);
-    
-    let data: StructuredCurriculum;
-    
-    if (!fs.existsSync(dataPath)) {
-      // Fallback to generic file
-      const fallbackPath = path.join(__dirname, '../../data/lessons', 'cbse_class11_physics.json');
-      if (!fs.existsSync(fallbackPath)) {
-        return res.status(404).json({ error: "Structured curriculum data not found" });
-      }
-      data = JSON.parse(fs.readFileSync(fallbackPath, 'utf-8'));
-    } else {
-      data = JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
+
+    // Find gradeSubjectId for classId and subjectId (UUID)
+    const [gradeSubject] = await db
+      .select()
+      .from(gradeSubjects)
+      .where(and(
+        eq(gradeSubjects.classId, classId),
+        eq(gradeSubjects.subjectId, subject.id)
+      ))
+      .limit(1);
+
+    if (!gradeSubject) {
+      return res.status(404).json({ error: "GradeSubject not found for class and subject" });
     }
-    
-    // Find the chapter
-    const chapter = data.find(c => c.chapterId === chapterSlug);
+
+    // Find chapter by slug
+    const [chapter] = await db
+      .select()
+      .from(chapters)
+      .where(and(
+        eq(chapters.gradeSubjectId, gradeSubject.id),
+        eq(chapters.slug, chapterSlug)
+      ))
+      .limit(1);
+
     if (!chapter) {
       return res.status(404).json({ error: `Chapter '${chapterSlug}' not found` });
     }
-    
-    // Find the section
-    const section = chapter.sections.find(s => s.slug === sectionSlug);
+
+    // Find lesson (section) by slug
+    const [section] = await db
+      .select()
+      .from(lessonsTable)
+      .where(and(
+        eq(lessonsTable.chapterId, chapter.id),
+        eq(lessonsTable.slug, sectionSlug)
+      ))
+      .limit(1);
+
     if (!section) {
       return res.status(404).json({ error: `Section '${sectionSlug}' not found` });
     }
-    
-    // Find the microsection
-    const microsection = section.microsections.find(m => m.id === microsectionId);
+
+    // Find microsection by id in section.content.microsections
+    const microsections = (typeof section.content === 'object' && 'microsections' in section.content && Array.isArray((section.content as any).microsections))
+      ? (section.content as any).microsections
+      : [];
+    const microsection = microsections.find((m : any) => m.id === microsectionId);
     if (!microsection) {
       return res.status(404).json({ error: `Microsection '${microsectionId}' not found` });
     }
-    
-    // Return microsection with additional context
+
     res.json({
       chapter: {
-        chapterId: chapter.chapterId,
-        chapterTitle: chapter.chapterTitle,
+        chapterId: chapter.slug,
+        chapterTitle: chapter.name,
       },
       section: {
-        id: section.id,
+        id: section.slug,
         slug: section.slug,
         title: section.title,
       },
       microsection,
-      // Include navigation info (prev/next microsections)
       navigation: {
-        sectionMicrosections: section.microsections.map(m => ({
+        sectionMicrosections: microsections.map((m : any) => ({
           id: m.id,
           type: m.type,
           title: m.title,
         })),
-        currentIndex: section.microsections.findIndex(m => m.id === microsectionId),
+        currentIndex: microsections.findIndex((m : any) => m.id === microsectionId),
       }
     });
   } catch (error) {
