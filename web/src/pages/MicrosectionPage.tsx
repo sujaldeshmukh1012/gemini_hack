@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { apiUrl } from '../utils/api';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { MathText } from '../components/MathText';
@@ -378,7 +379,7 @@ export function MicrosectionPage() {
 
       try {
         const response = await fetch(
-          `http://localhost:8000/api/lessons/structured/${classId}/${subjectId}/${chapterSlug}/${sectionSlug}/${microsectionId}`
+          apiUrl(`/api/lessons/structured/${classId}/${subjectId}/${chapterSlug}/${sectionSlug}/${microsectionId}`)
         );
         
         if (!response.ok) {

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../utils/api';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import type { StructuredChapter, StructuredSection, Microsection, MicrosectionType } from '../types';
@@ -83,7 +84,7 @@ export function ChapterPage() {
       try {
         // Fetch the structured curriculum JSON data
         const response = await fetch(
-          `http://localhost:8000/api/lessons/structured/${classId}/${subjectId}/${chapterSlug}`
+          apiUrl(`/api/lessons/structured/${classId}/${subjectId}/${chapterSlug}`)
         );
         
         if (!response.ok) throw new Error('Failed to fetch chapter data');

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../utils/api';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { 
   CurriculumWithGrades, 
@@ -89,7 +90,7 @@ function AdminLessonEditorPage() {
   // Fetch lessons when chapter is selected
   useEffect(() => {
     if (selectedChapterId) {
-      fetch(`http://localhost:8000/api/admin/lessons/${selectedChapterId}`)
+      fetch(apiUrl(`/api/admin/lessons/${selectedChapterId}`))
         .then(res => res.json())
         .then(setLessons)
         .catch(err => setError(err.message));
@@ -141,7 +142,7 @@ function AdminLessonEditorPage() {
   // Load lesson if lessonId is provided
   useEffect(() => {
     if (lessonId) {
-      fetch(`http://localhost:8000/api/admin/lessons/lesson/${lessonId}`)
+      fetch(apiUrl(`/api/admin/lessons/lesson/${lessonId}`))
         .then(res => res.json())
         .then((lesson: LessonEntity) => {
           setSelectedLesson(lesson);
@@ -165,8 +166,8 @@ function AdminLessonEditorPage() {
 
     try {
       const url = selectedLesson.id
-        ? `http://localhost:8000/api/admin/lessons/${selectedLesson.id}`
-        : 'http://localhost:8000/api/admin/lessons';
+        ? apiUrl(`/api/admin/lessons/${selectedLesson.id}`)
+        : apiUrl('/api/admin/lessons');
 
       const method = selectedLesson.id ? 'PUT' : 'POST';
 
@@ -258,9 +259,7 @@ function AdminLessonEditorPage() {
 
       // Refresh lessons list
       if (selectedChapterId) {
-        fetch(`http://localhost:8000/api/admin/lessons/${selectedChapterId}`)
-          .then(res => res.json())
-          .then(setLessons);
+        fetch(apiUrl(`/api/admin/lessons/${selectedChapterId}`)).then(res => res.json()).then(setLessons);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save lesson');
@@ -291,7 +290,7 @@ function AdminLessonEditorPage() {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
 
-      const response = await fetch('http://localhost:8000/api/admin/chapters', {
+      const response = await fetch(apiUrl('/api/admin/chapters'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -403,7 +402,7 @@ function AdminLessonEditorPage() {
       formData.append('file', file);
       formData.append('lessonId', selectedLesson?.id || 'draft');
       
-      const response = await fetch('http://localhost:8000/api/upload/video', {
+      const response = await fetch(apiUrl('/api/upload/video'), {
         method: 'POST',
         body: formData,
       });
@@ -873,7 +872,7 @@ function AdminLessonEditorPage() {
                                         try {
                                           setError(null);
                                           setGeneratingImageFor(index);
-                                          const response = await fetch('http://localhost:8000/api/admin/generate-image', {
+                                          const response = await fetch(apiUrl('/api/admin/generate-image'), {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' },
                                             body: JSON.stringify({

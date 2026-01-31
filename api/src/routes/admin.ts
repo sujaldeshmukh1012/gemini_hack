@@ -25,7 +25,7 @@ adminRouter.post("/subjects", async (req, res) => {
       return res.status(400).json({ error: "slug and name are required" });
     }
 
-    // Check if subject exists
+    // Check if subject ex ists
     const [existingSubject] = await db
       .select()
       .from(subjects)

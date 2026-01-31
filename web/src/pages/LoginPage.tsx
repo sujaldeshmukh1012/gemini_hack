@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { apiUrl } from '../utils/api';
 
 function LoginPage() {
   const [email, setEmail] = useState('');
@@ -13,7 +14,7 @@ function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:8000/api/auth/google';
+    window.location.href = apiUrl('/api/auth/google');
   };
 
   return (

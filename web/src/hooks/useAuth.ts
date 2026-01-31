@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { User, AuthData, UseAuthReturn } from '../types';
+import { apiUrl } from '../utils/api';
 
 export const useAuth = (): UseAuthReturn => {
   const [user, setUser] = useState<User | null>(null);
@@ -11,7 +12,7 @@ export const useAuth = (): UseAuthReturn => {
     setError(null);
     
     try {
-      const response = await fetch('http://localhost:8000/api/auth/me', {
+      const response = await fetch(apiUrl('/api/auth/me'), {
         credentials: 'include'
       });
       
