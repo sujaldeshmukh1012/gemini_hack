@@ -363,7 +363,7 @@ export function ChapterPage() {
               {brailleResult?.fullBraille && (
                 <div>
                   <p className="text-sm text-slate-500 mb-2">Full Braille</p>
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap">
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap break-words overflow-auto max-w-full">
                     {brailleResult.fullBraille}
                   </div>
                 </div>
@@ -371,7 +371,7 @@ export function ChapterPage() {
               {brailleResult?.brf && (
                 <div>
                   <p className="text-sm text-slate-500 mb-2">BRF (Ready for embossing)</p>
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap">
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap break-words overflow-auto max-w-full">
                     {brailleResult.brf}
                   </div>
                 </div>

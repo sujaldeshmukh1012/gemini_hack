@@ -16,8 +16,13 @@ import curriculumRouter from "./routes/curriculum.js";
 import adminRouter from "./routes/admin.js";
 import storyRouter from "./routes/story.js";
 import { storageConfig } from "./utils/storage.js";
+import { startWorkerLoop } from "./worker/index.js";
+import contentRouter from "./routes/content.js";
+import storyV2Router from "./routes/story_v2.js";
+import brailleV2Router from "./routes/braille_v2.js";
 
 const app = express();
+app.set("etag", false);
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -76,6 +81,14 @@ app.use("/api/lessons", lessonsRouter);
 app.use("/api/curriculum", curriculumRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/story", storyRouter);
+app.use("/api/content", contentRouter);
+app.use("/api/story_v2", storyV2Router);
+app.use("/api/braille_v2", brailleV2Router);
+
+// Start DB-backed worker loop in this process (no Redis)
+startWorkerLoop().catch((err) => {
+  console.error("[worker] failed to start", err);
+});
 
 async function startServer() {
   const PORT = process.env.PORT || 8000;

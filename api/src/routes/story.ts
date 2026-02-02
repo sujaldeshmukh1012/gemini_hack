@@ -26,7 +26,7 @@ const SAFE_IMAGE_PREFIX = "Kid-safe educational comic illustration, friendly, br
 
 type StorySlideDraft = Omit<StorySlide, "index" | "imageUrl">;
 
-const normalizeLocale = (locale: string) => {
+export const normalizeLocale = (locale: string) => {
   const cleaned = locale.trim();
   if (cleaned.toLowerCase().startsWith("es")) return "es-ES";
   if (cleaned.toLowerCase().startsWith("hi")) return "hi-IN";

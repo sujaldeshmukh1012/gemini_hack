@@ -136,6 +136,134 @@ export const storyAssets = pgTable("story_assets", {
 });
 
 // =============================================================================
+// MICROSECTIONS (Stable content_key units)
+// =============================================================================
+
+export const microsections = pgTable("microsections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "cascade" }).notNull(),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  orderIndex: integer("order_index").notNull(),
+  contentKey: text("content_key").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// =============================================================================
+// CONTENT VERSIONS (Deterministic canonical payloads)
+// =============================================================================
+
+export const contentVersions = pgTable("content_versions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  contentKey: text("content_key").notNull(),
+  version: integer("version").notNull(),
+  canonicalLocale: text("canonical_locale").notNull().default("en"),
+  payloadJson: jsonb("payload_json").notNull(),
+  payloadHash: text("payload_hash").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueKeyVersion: unique().on(table.contentKey, table.version),
+}));
+
+export const contentTranslations = pgTable("content_translations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  contentKey: text("content_key").notNull(),
+  version: integer("version").notNull(),
+  locale: text("locale").notNull(),
+  translatedPayloadJson: jsonb("translated_payload_json").notNull(),
+  translatedHash: text("translated_hash").notNull(),
+  model: text("model").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueContentLocale: unique().on(table.contentKey, table.version, table.locale),
+}));
+
+// =============================================================================
+// STORY + BRAILLE ARTIFACTS
+// =============================================================================
+
+export const storyPlans = pgTable("story_plans", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  contentKey: text("content_key").notNull(),
+  version: integer("version").notNull(),
+  locale: text("locale").notNull(),
+  planJson: jsonb("plan_json").notNull(),
+  planHash: text("plan_hash").notNull(),
+  model: text("model").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueKeyLocale: unique().on(table.contentKey, table.version, table.locale),
+}));
+
+export const storySlides = pgTable("story_slides", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  contentKey: text("content_key").notNull(),
+  version: integer("version").notNull(),
+  locale: text("locale").notNull(),
+  slideIndex: integer("slide_index").notNull(),
+  prompt: text("prompt").notNull(),
+  promptHash: text("prompt_hash").notNull(),
+  caption: text("caption").notNull(),
+  captionHash: text("caption_hash").notNull(),
+  imagePath: text("image_path"),
+  imageMime: text("image_mime"),
+  imageHash: text("image_hash"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueSlide: unique().on(table.contentKey, table.version, table.locale, table.slideIndex),
+}));
+
+export const storyAudio = pgTable("story_audio", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  contentKey: text("content_key").notNull(),
+  version: integer("version").notNull(),
+  locale: text("locale").notNull(),
+  slideIndex: integer("slide_index").notNull(),
+  voiceId: text("voice_id").notNull(),
+  ttsProvider: text("tts_provider").notNull(),
+  audioPath: text("audio_path"),
+  audioMime: text("audio_mime"),
+  audioHash: text("audio_hash"),
+  durationMs: integer("duration_ms"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueAudio: unique().on(table.contentKey, table.version, table.locale, table.slideIndex, table.voiceId),
+}));
+
+export const brailleExports = pgTable("braille_exports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  contentKey: text("content_key").notNull(),
+  version: integer("version").notNull(),
+  locale: text("locale").notNull(),
+  scope: text("scope").notNull(),
+  format: text("format").notNull(),
+  brailleText: text("braille_text").notNull(),
+  brailleHash: text("braille_hash").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueBraille: unique().on(table.contentKey, table.version, table.locale, table.scope, table.format),
+}));
+
+export const generationJobs = pgTable("generation_jobs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  jobType: text("job_type").notNull(),
+  contentKey: text("content_key").notNull(),
+  version: integer("version").notNull(),
+  locale: text("locale"),
+  slideIndex: integer("slide_index"),
+  scope: text("scope"),
+  format: text("format"),
+  status: text("status").notNull(),
+  idempotencyKey: text("idempotency_key").notNull().unique(),
+  error: text("error"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// =============================================================================
 // STORY AUDIO ASSETS TABLE (Localized narration + captions)
 // =============================================================================
 
@@ -150,24 +278,6 @@ export const storyAudioAssets = pgTable("story_audio_assets", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
   uniqueStoryLocale: unique().on(table.storyId, table.locale),
-}));
-
-// =============================================================================
-// CONTENT TRANSLATIONS (On-demand localized lesson content)
-// =============================================================================
-
-export const contentTranslations = pgTable("content_translations", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  contentKey: text("content_key").notNull(),
-  contentType: text("content_type").notNull(),
-  locale: text("locale").notNull(),
-  payload: jsonb("payload").notNull(),
-  status: text("status").notNull().default("ready"),
-  error: text("error"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => ({
-  uniqueContentLocale: unique().on(table.contentKey, table.contentType, table.locale),
 }));
 
 // =============================================================================
