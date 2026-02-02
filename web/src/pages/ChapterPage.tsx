@@ -108,8 +108,6 @@ export function ChapterPage() {
     fetchChapterData();
   }, [classId, subjectId, chapterSlug]);
 
-  console.log('Chapter data:', chapter);
-
   const toggleSection = (sectionId: string) => {
     setExpandedSections(prev => {
       const next = new Set(prev);
@@ -153,19 +151,7 @@ export function ChapterPage() {
     );
   }
 
-  // Sort sections by section number (parsed from id or slug)
-  const parseSectionNumber = (section: StructuredSection) => {
-    // Try to extract a number from id or slug, e.g., '1-2' or 'sec-1-2' or '1.2'
-    const str = section.slug || section.id || '';
-    const match = str.match(/(\d+)[-_.]?(\d+)?/);
-    if (match) {
-      const main = parseInt(match[1], 10);
-      const sub = match[2] ? parseInt(match[2], 10) : 0;
-      return main * 100 + sub;
-    }
-    return 99999; // fallback for non-numbered sections
-  };
-  const sections = [...chapter.sections].sort((a, b) => parseSectionNumber(a) - parseSectionNumber(b));
+  const sections = [...chapter.sections].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
   return (
     <div className="min-h-screen bg-slate-50">

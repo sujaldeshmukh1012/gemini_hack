@@ -15,6 +15,7 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminUploadPage from './pages/AdminUploadPage';
 import AdminChapterReviewPage from './pages/AdminChapterReviewPage';
 import AdminLessonEditorPage from './pages/AdminLessonEditorPage';
+import { AdminRoute } from './components/AdminRoute';
 import { VoiceAgentProvider } from './components/VoiceAgentProvider';
 import { VoiceAgentControls } from './components/VoiceAgentControls';
 
@@ -29,43 +30,43 @@ function App() {
           <Route path="/parse" element={<UploadPage />} />
           <Route path="/parse/review" element={<ChapterReviewPage />} />
           <Route path="/parse/result" element={<ParseResultPage />} />
-          <Route 
-            path="/setup" 
+          <Route
+            path="/setup"
             element={
               <ProtectedRoute>
                 <UserSetupPage />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/dashboard" 
+          <Route
+            path="/dashboard"
             element={
               <ProtectedRoute requireSetup={true}>
                 <Dashboard />
               </ProtectedRoute>
-            } 
+            }
           />
           {/* Chapter page - shows sections within a chapter (structured style) */}
-          <Route 
-            path="/:classId/:subjectId/:chapterSlug" 
-            element={<ChapterPage />} 
+          <Route
+            path="/:classId/:subjectId/:chapterSlug"
+            element={<ChapterPage />}
           />
           {/* Microsection page - individual content (article, video, quiz, practice) */}
-          <Route 
-            path="/:classId/:subjectId/:chapterSlug/:sectionSlug/:microsectionId" 
-            element={<MicrosectionPage />} 
+          <Route
+            path="/:classId/:subjectId/:chapterSlug/:sectionSlug/:microsectionId"
+            element={<MicrosectionPage />}
           />
           {/* Legacy lesson page - fallback */}
-          <Route 
-            path="/:classId/:subjectId/:unit/lesson" 
-            element={<LessonPage />} 
+          <Route
+            path="/:classId/:subjectId/:unit/lesson"
+            element={<LessonPage />}
           />
-          {/* Admin Routes */}
-          <Route path="/admin" element={<AdminDashboardPage />} />
-          <Route path="/admin/upload" element={<AdminUploadPage />} />
-          <Route path="/admin/review" element={<AdminChapterReviewPage />} />
-          <Route path="/admin/editor" element={<AdminLessonEditorPage />} />
-          <Route path="/admin/editor/:lessonId" element={<AdminLessonEditorPage />} />
+          {/* Admin Routes - Protected */}
+          <Route path="/admin" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
+          <Route path="/admin/upload" element={<AdminRoute><AdminUploadPage /></AdminRoute>} />
+          <Route path="/admin/review" element={<AdminRoute><AdminChapterReviewPage /></AdminRoute>} />
+          <Route path="/admin/editor" element={<AdminRoute><AdminLessonEditorPage /></AdminRoute>} />
+          <Route path="/admin/editor/:lessonId" element={<AdminRoute><AdminLessonEditorPage /></AdminRoute>} />
         </Routes>
         <VoiceAgentControls />
       </VoiceAgentProvider>

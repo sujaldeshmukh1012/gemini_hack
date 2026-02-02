@@ -1,13 +1,15 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { apiUrl } from '../utils/api';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { MathText } from '../components/MathText';
-import type { 
-  Microsection, 
-  ArticleMicrosection, 
-  VideoMicrosection, 
-  QuizMicrosection, 
+import AccessibilityToolbar from '../components/AccessibilityToolbar';
+import { useTextToSpeech } from '../hooks/useTextToSpeech';
+import type {
+  Microsection,
+  ArticleMicrosection,
+  VideoMicrosection,
+  QuizMicrosection,
   PracticeMicrosection,
   ArticleContent
 } from '../types';
@@ -20,13 +22,51 @@ function formatText(text: string): string {
   return withBold.replace(/\\n/g, '<br/>').replace(/\/n/g, '<br/>');
 }
 
+// Helper to get all text components for speech/braille
+function getAllContentText(microsection: Microsection): string {
+  let text = `${microsection.title}. `;
+
+  if (microsection.type === 'article') {
+    const content = (microsection as ArticleMicrosection).content;
+    if (content.introduction) text += `${content.introduction}\n`;
+
+    content.coreConcepts.forEach(concept => {
+      text += `${concept.conceptTitle}. ${concept.explanation}\n`;
+      if (concept.example) text += `Example: ${concept.example}\n`;
+    });
+
+    if (content.summary.length > 0) {
+      text += "Key Takeaways: " + content.summary.join('. ') + "\n";
+    }
+
+    if (content.quickCheckQuestions.length > 0) {
+      text += "Quick Check Questions: ";
+      content.quickCheckQuestions.forEach((q, i) => {
+        text += `Question ${i + 1}: ${q.question}. `;
+      });
+    }
+  } else if (microsection.type === 'quiz' || microsection.type === 'practice') {
+    const content = (microsection as QuizMicrosection | PracticeMicrosection).content;
+    if (content.description) text += `${content.description}\n`;
+    content.questions.forEach((q, i) => {
+      text += `Question ${i + 1}: ${q.question}. `;
+      if (q.options) text += "Options: " + q.options.join(', ') + ". ";
+    });
+  } else if (microsection.type === 'video') {
+    const content = (microsection as VideoMicrosection).content;
+    if (content.description) text += `${content.description}\n`;
+  }
+
+  return text;
+}
+
 // Article Viewer Component
 const ArticleViewer: React.FC<{ content: ArticleContent }> = ({ content }) => {
   return (
     <div className="prose prose-slate max-w-none">
       {/* Introduction */}
       {content.introduction && (
-          <div className="text-lg text-slate-600 mb-8 leading-relaxed">
+        <div className="text-lg text-slate-600 mb-8 leading-relaxed">
           <MathText text={formatText(content.introduction)} />
         </div>
       )}
@@ -48,8 +88,8 @@ const ArticleViewer: React.FC<{ content: ArticleContent }> = ({ content }) => {
           )}
           {concept.diagramImageUrl && (
             <div className="my-4 rounded-xl overflow-hidden border border-slate-200">
-              <img 
-                src={concept.diagramImageUrl} 
+              <img
+                src={concept.diagramImageUrl}
                 alt={concept.diagramDescription || `Diagram for ${concept.conceptTitle}`}
                 className="w-full max-w-lg"
               />
@@ -110,8 +150,8 @@ const ArticleViewer: React.FC<{ content: ArticleContent }> = ({ content }) => {
 const VideoViewer: React.FC<{ content: VideoMicrosection['content'] }> = ({ content }) => {
   const getEmbedUrl = (url: string) => {
     if (url.includes('youtube.com') || url.includes('youtu.be')) {
-      const videoId = url.includes('youtu.be') 
-        ? url.split('/').pop() 
+      const videoId = url.includes('youtu.be')
+        ? url.split('/').pop()
         : new URL(url).searchParams.get('v');
       return `https://www.youtube.com/embed/${videoId}`;
     }
@@ -146,13 +186,13 @@ const VideoViewer: React.FC<{ content: VideoMicrosection['content'] }> = ({ cont
           </div>
         )}
       </div>
-      
+
       {content.description && (
         <div className="prose prose-slate max-w-none">
           <p className="text-slate-600">{content.description}</p>
         </div>
       )}
-      
+
       {content.transcript && (
         <details className="mt-6 border border-slate-200 rounded-xl">
           <summary className="p-4 cursor-pointer font-medium text-slate-700 hover:bg-slate-50">
@@ -195,7 +235,7 @@ const QuizViewer: React.FC<{ content: QuizMicrosection['content'] }> = ({ conten
       {content.description && (
         <p className="text-slate-600 mb-6">{content.description}</p>
       )}
-      
+
       {content.timeLimit && !submitted && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6 flex items-center gap-2 text-amber-800">
           <span>⏱️</span>
@@ -209,7 +249,7 @@ const QuizViewer: React.FC<{ content: QuizMicrosection['content'] }> = ({ conten
             {score === content.questions.length ? '🎉 Perfect Score!' : `You scored ${score}/${content.questions.length}`}
           </h3>
           <p className={score === content.questions.length ? 'text-green-700' : 'text-blue-700'}>
-            {score === content.questions.length 
+            {score === content.questions.length
               ? 'Great job! You got all questions correct.'
               : `Review the questions below to see the correct answers.`
             }
@@ -221,10 +261,10 @@ const QuizViewer: React.FC<{ content: QuizMicrosection['content'] }> = ({ conten
         {content.questions.map((question, qIndex) => {
           const isCorrect = submitted && answers[question.id] === question.correctAnswer;
           const isWrong = submitted && answers[question.id] !== undefined && answers[question.id] !== question.correctAnswer;
-          
+
           return (
-            <div 
-              key={question.id} 
+            <div
+              key={question.id}
               className={`border rounded-xl p-5 ${isCorrect ? 'border-green-300 bg-green-50' : isWrong ? 'border-red-300 bg-red-50' : 'border-slate-200'}`}
             >
               <div className="flex items-start gap-3 mb-4">
@@ -246,21 +286,20 @@ const QuizViewer: React.FC<{ content: QuizMicrosection['content'] }> = ({ conten
                   {question.options.map((option, optIndex) => {
                     const isSelected = answers[question.id] === optIndex;
                     const isCorrectOption = submitted && question.correctAnswer === optIndex;
-                    
+
                     return (
                       <button
                         key={optIndex}
                         onClick={() => handleAnswer(question.id, optIndex)}
                         disabled={submitted}
-                        className={`w-full text-left p-3 rounded-lg border transition-all ${
-                          isCorrectOption 
-                            ? 'border-green-500 bg-green-100 text-green-800'
-                            : isSelected && isWrong
-                              ? 'border-red-500 bg-red-100 text-red-800'
-                              : isSelected
-                                ? 'border-blue-500 bg-blue-50'
-                                : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                        } ${submitted ? 'cursor-default' : 'cursor-pointer'}`}
+                        className={`w-full text-left p-3 rounded-lg border transition-all ${isCorrectOption
+                          ? 'border-green-500 bg-green-100 text-green-800'
+                          : isSelected && isWrong
+                            ? 'border-red-500 bg-red-100 text-red-800'
+                            : isSelected
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                          } ${submitted ? 'cursor-default' : 'cursor-pointer'}`}
                       >
                         <span className="font-medium mr-2">{String.fromCharCode(65 + optIndex)}.</span>
                         {option}
@@ -276,21 +315,20 @@ const QuizViewer: React.FC<{ content: QuizMicrosection['content'] }> = ({ conten
                     const value = option.toLowerCase();
                     const isSelected = answers[question.id] === value;
                     const isCorrectOption = submitted && question.correctAnswer === value;
-                    
+
                     return (
                       <button
                         key={option}
                         onClick={() => handleAnswer(question.id, value)}
                         disabled={submitted}
-                        className={`flex-1 p-3 rounded-lg border transition-all ${
-                          isCorrectOption 
-                            ? 'border-green-500 bg-green-100 text-green-800'
-                            : isSelected && isWrong
-                              ? 'border-red-500 bg-red-100 text-red-800'
-                              : isSelected
-                                ? 'border-blue-500 bg-blue-50'
-                                : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                        } ${submitted ? 'cursor-default' : 'cursor-pointer'}`}
+                        className={`flex-1 p-3 rounded-lg border transition-all ${isCorrectOption
+                          ? 'border-green-500 bg-green-100 text-green-800'
+                          : isSelected && isWrong
+                            ? 'border-red-500 bg-red-100 text-red-800'
+                            : isSelected
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                          } ${submitted ? 'cursor-default' : 'cursor-pointer'}`}
                       >
                         {option}
                       </button>
@@ -314,11 +352,10 @@ const QuizViewer: React.FC<{ content: QuizMicrosection['content'] }> = ({ conten
         <button
           onClick={handleSubmit}
           disabled={Object.keys(answers).length < content.questions.length}
-          className={`mt-6 w-full py-3 rounded-xl font-semibold transition-all ${
-            Object.keys(answers).length >= content.questions.length
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-          }`}
+          className={`mt-6 w-full py-3 rounded-xl font-semibold transition-all ${Object.keys(answers).length >= content.questions.length
+            ? 'bg-blue-600 text-white hover:bg-blue-700'
+            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+            }`}
         >
           Submit Quiz
         </button>
@@ -363,11 +400,20 @@ export function MicrosectionPage() {
     sectionSlug: string;
     microsectionId: string;
   }>();
-  
+
   useAuth(); // Still call to ensure authentication
   const [data, setData] = useState<MicrosectionApiResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Accessibility state
+  // Accessibility state
+  const { speak, stop, isPlaying } = useTextToSpeech();
+  const [voiceOverEnabled, setVoiceOverEnabled] = useState(false);
+  const [storyModeEnabled, setStoryModeEnabled] = useState(false);
+  const [highContrastEnabled, setHighContrastEnabled] = useState(false);
+  const [isBrailleLoading, setIsBrailleLoading] = useState(false);
+  const contentRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const fetchMicrosection = async () => {
@@ -381,11 +427,11 @@ export function MicrosectionPage() {
         const response = await fetch(
           apiUrl(`/api/lessons/structured/${classId}/${subjectId}/${chapterSlug}/${sectionSlug}/${microsectionId}`)
         );
-        
+
         if (!response.ok) {
           throw new Error('Content not found');
         }
-        
+
         const responseData: MicrosectionApiResponse = await response.json();
         setData(responseData);
       } catch (err) {
@@ -399,14 +445,170 @@ export function MicrosectionPage() {
     fetchMicrosection();
   }, [classId, subjectId, chapterSlug, sectionSlug, microsectionId]);
 
+  // Voice Control Listener
+  useEffect(() => {
+    const handleVoiceControl = (event: CustomEvent) => {
+      const { action } = event.detail;
+
+      switch (action) {
+        case 'play':
+        case 'resume':
+          if (data && !voiceOverEnabled) {
+            setVoiceOverEnabled(true);
+          }
+          break;
+        case 'pause':
+        case 'stop':
+          setVoiceOverEnabled(false);
+          break;
+        case 'next':
+          if (data) {
+            const { navigation, section } = data;
+            const newIndex = navigation.currentIndex + 1;
+            if (newIndex < navigation.sectionMicrosections.length) {
+              const nextMicrosection = navigation.sectionMicrosections[newIndex];
+              navigate(`/${classId}/${subjectId}/${chapterSlug}/${section.slug}/${nextMicrosection.id}`);
+            }
+          }
+          break;
+        case 'previous':
+          if (data) {
+            const { navigation, section } = data;
+            const newIndex = navigation.currentIndex - 1;
+            if (newIndex >= 0) {
+              const prevMicrosection = navigation.sectionMicrosections[newIndex];
+              navigate(`/${classId}/${subjectId}/${chapterSlug}/${section.slug}/${prevMicrosection.id}`);
+            } else {
+              navigate(`/${classId}/${subjectId}/${chapterSlug}`);
+            }
+          }
+          break;
+      }
+    };
+
+    // Braille Control Listener
+    const handleBrailleControl = (event: CustomEvent) => {
+      handleBraille();
+    };
+
+    window.addEventListener('lesson-control', handleVoiceControl as EventListener);
+    window.addEventListener('braille-control', handleBrailleControl as EventListener);
+
+    return () => {
+      window.removeEventListener('lesson-control', handleVoiceControl as EventListener);
+      window.removeEventListener('braille-control', handleBrailleControl as EventListener);
+    };
+  }, [data, voiceOverEnabled]);
+
+  // VoiceOver: read page when enabled
+  useEffect(() => {
+    if (!voiceOverEnabled) {
+      stop();
+      return;
+    }
+
+    if (!data) return;
+
+    const textToRead = getAllContentText(data.microsection);
+    speak(textToRead);
+
+    return () => {
+      stop();
+    };
+  }, [voiceOverEnabled, data, speak, stop]);
+
+  // Braille Export Handler
+  const handleBraille = async () => {
+    if (!data) return;
+
+    setIsBrailleLoading(true);
+    try {
+      const lessonText = getAllContentText(data.microsection);
+
+      const response = await fetch(apiUrl('/api/braille/convert'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          lesson: lessonText,
+          normalize: true
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to convert to Braille');
+
+      const result = await response.json();
+
+      if (result.success) {
+        // 1. Download BRF file
+        if (result.brf) {
+          const blobBrf = new Blob([result.brf], { type: 'text/plain' });
+          const urlBrf = window.URL.createObjectURL(blobBrf);
+          const aBrf = document.createElement('a');
+          aBrf.href = urlBrf;
+          aBrf.download = `${data.microsection.title.replace(/\s+/g, '_')}.brf`;
+          document.body.appendChild(aBrf);
+          aBrf.click();
+          window.URL.revokeObjectURL(urlBrf);
+          document.body.removeChild(aBrf);
+        }
+
+        // 2. Download Unicode Braille TXT file
+        if (result.fullBraille) {
+          const blobTxt = new Blob([result.fullBraille], { type: 'text/plain;charset=utf-8' });
+          const urlTxt = window.URL.createObjectURL(blobTxt);
+          const aTxt = document.createElement('a');
+          aTxt.href = urlTxt;
+          aTxt.download = `${data.microsection.title.replace(/\s+/g, '_')}_unicode.txt`;
+          document.body.appendChild(aTxt);
+          aTxt.click();
+          window.URL.revokeObjectURL(urlTxt);
+          document.body.removeChild(aTxt);
+        }
+      }
+    } catch (err) {
+      console.error('Braille export error:', err);
+      alert('Failed to generate Braille files. Please try again.');
+    } finally {
+      setIsBrailleLoading(false);
+    }
+  };
+
+  // Story mode: simple highlight sequence
+  useEffect(() => {
+    if (!storyModeEnabled || !contentRef.current) return;
+    const root = contentRef.current;
+    const items = Array.from(root.querySelectorAll('p, h2, h3, li, details')) as HTMLElement[];
+    if (items.length === 0) return;
+    let idx = 0;
+    items.forEach(it => it.style.transition = 'background-color 0.25s ease');
+    const iv = setInterval(() => {
+      items.forEach(it => it.style.backgroundColor = '');
+      const cur = items[idx];
+      if (cur) cur.style.backgroundColor = 'rgba(255,255,0,0.15)';
+      idx = (idx + 1) % items.length;
+    }, 1800);
+    return () => {
+      clearInterval(iv);
+      items.forEach(it => it.style.backgroundColor = '');
+    };
+  }, [storyModeEnabled, data]);
+
+  // High contrast
+  useEffect(() => {
+    if (highContrastEnabled) document.documentElement.classList.add('high-contrast-mode');
+    else document.documentElement.classList.remove('high-contrast-mode');
+  }, [highContrastEnabled]);
+
   const handleNavigate = (direction: 'prev' | 'next') => {
     if (!data) return;
-    
+
     const { navigation, section } = data;
-    const newIndex = direction === 'prev' 
-      ? navigation.currentIndex - 1 
+    const newIndex = direction === 'prev'
+      ? navigation.currentIndex - 1
       : navigation.currentIndex + 1;
-    
+
     if (newIndex >= 0 && newIndex < navigation.sectionMicrosections.length) {
       const nextMicrosection = navigation.sectionMicrosections[newIndex];
       navigate(`/${classId}/${subjectId}/${chapterSlug}/${section.slug}/${nextMicrosection.id}`);
@@ -474,7 +676,7 @@ export function MicrosectionPage() {
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => navigate(`/${classId}/${subjectId}/${chapterSlug}`)}
               className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
             >
@@ -496,6 +698,28 @@ export function MicrosectionPage() {
               </div>
               <h1 className="font-bold text-lg text-slate-900">{microsection.title}</h1>
             </div>
+            <div className="ml-auto">
+              <AccessibilityToolbar
+                voiceOverEnabled={voiceOverEnabled}
+                onVoiceOverToggle={(enabled: boolean) => setVoiceOverEnabled(enabled)}
+                onBraille={handleBraille}
+                isBrailleLoading={isBrailleLoading}
+                storyModeEnabled={storyModeEnabled}
+                onStoryModeToggle={(enabled: boolean) => setStoryModeEnabled(enabled)}
+                highContrastEnabled={highContrastEnabled}
+                onHighContrastToggle={(enabled: boolean) => setHighContrastEnabled(enabled)}
+                onIncreaseText={() => {
+                  const cur = window.getComputedStyle(document.documentElement).fontSize;
+                  const px = parseFloat(cur || '16');
+                  document.documentElement.style.fontSize = `${Math.min(24, px + 1)}px`;
+                }}
+                onDecreaseText={() => {
+                  const cur = window.getComputedStyle(document.documentElement).fontSize;
+                  const px = parseFloat(cur || '16');
+                  document.documentElement.style.fontSize = `${Math.max(12, px - 1)}px`;
+                }}
+              />
+            </div>
           </div>
         </div>
       </header>
@@ -503,7 +727,9 @@ export function MicrosectionPage() {
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-6 py-8">
         {microsection.type === 'article' && (
-          <ArticleViewer content={(microsection as ArticleMicrosection).content} />
+          <div ref={contentRef}>
+            <ArticleViewer content={(microsection as ArticleMicrosection).content} />
+          </div>
         )}
         {microsection.type === 'video' && (
           <VideoViewer content={(microsection as VideoMicrosection).content} />
@@ -521,11 +747,10 @@ export function MicrosectionPage() {
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <button
             onClick={() => handleNavigate('prev')}
-            className={`px-4 py-2 font-medium flex items-center gap-2 rounded-lg ${
-              hasPrev 
-                ? 'text-slate-600 hover:text-slate-800 hover:bg-slate-100' 
-                : 'text-slate-300 cursor-not-allowed'
-            }`}
+            className={`px-4 py-2 font-medium flex items-center gap-2 rounded-lg ${hasPrev
+              ? 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'
+              : 'text-slate-300 cursor-not-allowed'
+              }`}
             disabled={!hasPrev}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -533,23 +758,22 @@ export function MicrosectionPage() {
             </svg>
             Previous
           </button>
-          
+
           {/* Progress indicator */}
           <div className="flex items-center gap-1">
             {navigation.sectionMicrosections.map((_, idx) => (
-              <div 
+              <div
                 key={idx}
-                className={`w-2 h-2 rounded-full ${
-                  idx === navigation.currentIndex 
-                    ? 'bg-blue-600' 
-                    : idx < navigation.currentIndex 
-                      ? 'bg-green-500' 
-                      : 'bg-slate-200'
-                }`}
+                className={`w-2 h-2 rounded-full ${idx === navigation.currentIndex
+                  ? 'bg-blue-600'
+                  : idx < navigation.currentIndex
+                    ? 'bg-green-500'
+                    : 'bg-slate-200'
+                  }`}
               />
             ))}
           </div>
-          
+
           <button
             onClick={() => hasNext ? handleNavigate('next') : navigate(`/${classId}/${subjectId}/${chapterSlug}`)}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 flex items-center gap-2"
