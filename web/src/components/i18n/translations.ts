@@ -146,9 +146,6 @@ export type TranslationKey =
   | 'controls.signs'
   | 'controls.calmMotion'
   | 'controls.language'
-  | 'controls.themeDark'
-  | 'controls.themeLight'
-  | 'controls.themeToggle'
   | 'setup.preferences'
   | 'story.mode'
   | 'story.pause'
@@ -313,9 +310,6 @@ export const translations: Record<'en' | 'es' | 'hi', Translations> = {
     'controls.signs': 'Signs',
     'controls.calmMotion': 'Calm Motion',
     'controls.language': 'Language',
-    'controls.themeDark': 'Dark',
-    'controls.themeLight': 'Light',
-    'controls.themeToggle': 'Theme',
     'setup.preferences': 'Preferences',
     'story.mode': 'Story Mode',
     'story.pause': 'Pause',
@@ -477,9 +471,6 @@ export const translations: Record<'en' | 'es' | 'hi', Translations> = {
     'controls.signs': 'Señas',
     'controls.calmMotion': 'Movimiento suave',
     'controls.language': 'Idioma',
-    'controls.themeDark': 'Oscuro',
-    'controls.themeLight': 'Claro',
-    'controls.themeToggle': 'Tema',
     'setup.preferences': 'Preferencias',
     'story.mode': 'Modo Historia',
     'story.pause': 'Pausa',
@@ -641,9 +632,6 @@ export const translations: Record<'en' | 'es' | 'hi', Translations> = {
     'controls.signs': 'साइन',
     'controls.calmMotion': 'शांत मोशन',
     'controls.language': 'भाषा',
-    'controls.themeDark': 'डार्क',
-    'controls.themeLight': 'लाइट',
-    'controls.themeToggle': 'थीम',
     'setup.preferences': 'प्राथमिकताएँ',
     'story.mode': 'कहानी मोड',
     'story.pause': 'रोकें',

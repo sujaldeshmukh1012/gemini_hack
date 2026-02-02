@@ -1,7 +1,6 @@
 import { useAccessibility } from './accessibility/AccessibilityProvider';
 import { useLanguage } from './i18n/LanguageProvider';
 import { useI18n } from './i18n/useI18n';
-import { useTheme } from './theme/ThemeProvider';
 
 export const GlobalControlsBar = () => {
   const {
@@ -18,7 +17,6 @@ export const GlobalControlsBar = () => {
   } = useAccessibility();
   const { language, setLanguage } = useLanguage();
   const { t } = useI18n();
-  const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="fixed top-0 left-0 right-0 z-[60] bg-white/95 backdrop-blur border-b border-slate-200">
@@ -83,13 +81,6 @@ export const GlobalControlsBar = () => {
             <option value="es">ES Espanol 🇪🇸</option>
             <option value="hi">IN Hindi 🇮🇳</option>
           </select>
-          <button
-            onClick={toggleTheme}
-            aria-pressed={theme === 'dark'}
-            className="px-3 py-1.5 rounded-full text-xs font-semibold border bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-          >
-            {theme === 'dark' ? `🌙 ${t('controls.themeDark')}` : `☀️ ${t('controls.themeLight')}`}
-          </button>
         </div>
       </div>
     </div>

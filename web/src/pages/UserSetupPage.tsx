@@ -8,7 +8,6 @@ import {
 import { saveLanguagePreference } from '../utils/language';
 import { useI18n } from '../components/i18n/useI18n';
 import { useLanguage } from '../components/i18n/LanguageProvider';
-import { useTheme } from '../components/theme/ThemeProvider';
 import type { 
   SetupStep, 
   SetupStepInfo, 
@@ -23,7 +22,6 @@ interface SetupData {
   classId: string;
   chapterIds: string[];
   language: 'en' | 'es' | 'hi';
-  theme: 'light' | 'dark';
 }
 
 export const UserSetupPage = () => {
@@ -31,7 +29,6 @@ export const UserSetupPage = () => {
   const { user, isLoading: authLoading } = useAuth();
   const { t } = useI18n();
   const { setLanguage } = useLanguage();
-  const { theme, setTheme } = useTheme();
   const STEPS: SetupStepInfo[] = [
     { id: 'curriculum', title: t('setup.curriculum'), subtitle: t('setup.subtitle') },
     { id: 'grade', title: t('setup.grade'), subtitle: t('setup.subtitle') },
@@ -42,8 +39,7 @@ export const UserSetupPage = () => {
     curriculumId: '',
     classId: '',
     chapterIds: [],
-    language: 'en',
-    theme: 'light'
+    language: 'en'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,12 +58,6 @@ export const UserSetupPage = () => {
       setSetupData(prev => ({
         ...prev,
         language: (user.profile?.language as 'en' | 'es' | 'hi') || 'en'
-      }));
-    }
-    if (user?.profile?.theme) {
-      setSetupData(prev => ({
-        ...prev,
-        theme: (user.profile?.theme as 'light' | 'dark') || 'light'
       }));
     }
   }, [user]);
@@ -206,8 +196,7 @@ export const UserSetupPage = () => {
             curriculumId: setupData.curriculumId,
             classId: setupData.classId,
             chapterIds: setupData.chapterIds,
-            language: setupData.language,
-            theme: setupData.theme
+            language: setupData.language
           },
           curriculumId: setupData.curriculumId,
           classId: setupData.classId
@@ -352,17 +341,6 @@ export const UserSetupPage = () => {
                   <option value="es">ES Espanol 🇪🇸</option>
                   <option value="hi">IN Hindi 🇮🇳</option>
                 </select>
-                <span className="ml-2 text-xs font-semibold text-slate-600 uppercase tracking-wide">{t('controls.themeToggle')}</span>
-                <button
-                  onClick={() => {
-                    const next = theme === 'dark' ? 'light' : 'dark';
-                    setSetupData(prev => ({ ...prev, theme: next }));
-                    setTheme(next);
-                  }}
-                  className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm"
-                >
-                  {theme === 'dark' ? `🌙 ${t('controls.themeDark')}` : `☀️ ${t('controls.themeLight')}`}
-                </button>
               </div>
             </div>
             {error && (

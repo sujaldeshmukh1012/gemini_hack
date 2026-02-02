@@ -192,10 +192,9 @@ accountsRouter.put("/preferences", async (req, res) => {
   }
 
   try {
-    const { language, accessibility, theme } = req.body as {
+    const { language, accessibility } = req.body as {
       language?: string;
       accessibility?: Record<string, unknown>;
-      theme?: string;
     };
     const user = req.user as User;
 
@@ -213,7 +212,6 @@ accountsRouter.put("/preferences", async (req, res) => {
       ...(existingUser.profile || {}),
       ...(accessibility ? { accessibility } : {}),
       ...(language ? { language } : {}),
-      ...(theme ? { theme } : {}),
     };
 
     const [updatedUser] = await db

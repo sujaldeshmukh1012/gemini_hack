@@ -21,18 +21,16 @@ import { VoiceAgentControls } from './components/VoiceAgentControls';
 import { AccessibilityProvider } from './components/accessibility/AccessibilityProvider';
 import { GlobalControlsBar } from './components/GlobalControlsBar';
 import { LanguageProvider } from './components/i18n/LanguageProvider';
-import { ThemeProvider } from './components/theme/ThemeProvider';
 
 function App() {
   return (
     <Router>
       <AccessibilityProvider>
         <LanguageProvider>
-          <ThemeProvider>
-            <VoiceAgentProvider>
-              <a href="#main-content" className="skip-link">Skip to content</a>
-              <main id="main-content">
-                <Routes>
+          <VoiceAgentProvider>
+            <a href="#main-content" className="skip-link">Skip to content</a>
+            <main id="main-content">
+              <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignUpPage />} />
@@ -77,12 +75,11 @@ function App() {
               <Route path="/admin/editor" element={<AdminLessonEditorPage />} />
               <Route path="/admin/editor/:lessonId" element={<AdminLessonEditorPage />} />
               <Route path="/accessibility-guide" element={<AccessibilityGuidePage />} />
-                </Routes>
-              </main>
-              <GlobalControlsBar />
-              <VoiceAgentControls />
-            </VoiceAgentProvider>
-          </ThemeProvider>
+              </Routes>
+            </main>
+            <GlobalControlsBar />
+            <VoiceAgentControls />
+          </VoiceAgentProvider>
         </LanguageProvider>
       </AccessibilityProvider>
     </Router>

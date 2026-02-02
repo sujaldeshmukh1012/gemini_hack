@@ -16,7 +16,6 @@ export interface UserProfile {
   chapterIds: string[];
   accessibility?: AccessibilityPreferences;
   language?: string;
-  theme?: 'light' | 'dark';
 }
 
 export interface User {
