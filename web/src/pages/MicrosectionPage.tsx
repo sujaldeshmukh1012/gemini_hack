@@ -18,7 +18,7 @@ import { useLanguage } from '../components/i18n/LanguageProvider';
 import { useI18n } from '../components/i18n/useI18n';
 
 // Article Viewer Component
-const ArticleViewer: React.FC<{ content: ArticleContent }> = ({ content }) => {
+const ArticleViewer: React.FC<{ content: ArticleContent; t: (key: any) => string }> = ({ content, t }) => {
   return (
     <div className="prose prose-slate max-w-none">
       {/* Introduction */}
@@ -37,7 +37,7 @@ const ArticleViewer: React.FC<{ content: ArticleContent }> = ({ content }) => {
           </div>
           {concept.example && (
             <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg mb-4">
-              <p className="font-semibold text-blue-800 mb-1">{t('micro.example')}</p>
+                <p className="font-semibold text-blue-800 mb-1">{t('micro.example')}</p>
               <div className="text-blue-900">
                 <MathText text={concept.example} />
               </div>
@@ -112,7 +112,8 @@ const VideoViewer: React.FC<{
   audioSlides?: StoryAudioAsset['slides'];
   onRegenerateAudio?: () => void;
   isAudioLoading?: boolean;
-}> = ({ content, story, onGenerateStory, isStoryLoading, audioSlides, onRegenerateAudio, isAudioLoading }) => {
+  t: (key: any) => string;
+}> = ({ content, story, onGenerateStory, isStoryLoading, audioSlides, onRegenerateAudio, isAudioLoading, t }) => {
   const getEmbedUrl = (url: string) => {
     if (url.includes('youtube.com') || url.includes('youtu.be')) {
       const videoId = url.includes('youtu.be') 
@@ -192,7 +193,7 @@ const VideoViewer: React.FC<{
 };
 
 // Quiz Viewer Component
-const QuizViewer: React.FC<{ content: QuizMicrosection['content'] }> = ({ content }) => {
+const QuizViewer: React.FC<{ content: QuizMicrosection['content']; t: (key: any) => string }> = ({ content, t }) => {
   const [answers, setAnswers] = useState<Record<string, string | number>>({});
   const [submitted, setSubmitted] = useState(false);
   const [showResults, setShowResults] = useState(false);
@@ -217,7 +218,9 @@ const QuizViewer: React.FC<{ content: QuizMicrosection['content'] }> = ({ conten
   return (
     <div>
       {content.description && (
-        <p className="text-slate-600 mb-6">{content.description}</p>
+        <div className="text-slate-600 mb-6">
+          <MathText text={content.description} />
+        </div>
       )}
       
       {content.timeLimit && !submitted && (
@@ -256,9 +259,9 @@ const QuizViewer: React.FC<{ content: QuizMicrosection['content'] }> = ({ conten
                   {qIndex + 1}
                 </span>
                 <div className="flex-1">
-                  <p className="font-medium text-slate-900">
-                    <MathText text={question.question} />
-                  </p>
+                          <div className="font-medium text-slate-900">
+                            <MathText text={question.question} />
+                          </div>
                   {question.points && (
                     <span className="text-xs text-slate-400 mt-1">{question.points} points</span>
                   )}
@@ -352,8 +355,8 @@ const QuizViewer: React.FC<{ content: QuizMicrosection['content'] }> = ({ conten
 };
 
 // Practice Viewer Component
-const PracticeViewer: React.FC<{ content: PracticeMicrosection['content'] }> = ({ content }) => {
-  return <QuizViewer content={{ id: content.id, title: content.title, description: content.description, questions: content.questions }} />;
+const PracticeViewer: React.FC<{ content: PracticeMicrosection['content']; t: (key: any) => string }> = ({ content, t }) => {
+  return <QuizViewer content={{ id: content.id, title: content.title, description: content.description, questions: content.questions }} t={t} />;
 };
 
 // API response type for microsection endpoint
@@ -730,7 +733,7 @@ export function MicrosectionPage() {
         )}
 
         {microsection.type === 'article' && (
-          <ArticleViewer content={(microsection as ArticleMicrosection).content} />
+          <ArticleViewer content={(microsection as ArticleMicrosection).content} t={t} />
         )}
         {microsection.type === 'video' && (
           <VideoViewer
@@ -741,13 +744,14 @@ export function MicrosectionPage() {
             audioSlides={storyAudio?.slides}
             onRegenerateAudio={() => fetchStoryAudio(story ?? undefined, true)}
             isAudioLoading={isAudioLoading}
+            t={t}
           />
         )}
         {microsection.type === 'quiz' && (
-          <QuizViewer content={(microsection as QuizMicrosection).content} />
+          <QuizViewer content={(microsection as QuizMicrosection).content} t={t} />
         )}
         {microsection.type === 'practice' && (
-          <PracticeViewer content={(microsection as PracticeMicrosection).content} />
+          <PracticeViewer content={(microsection as PracticeMicrosection).content} t={t} />
         )}
       </main>
 
@@ -774,7 +778,7 @@ export function MicrosectionPage() {
               {brailleResult?.fullBraille && (
                 <div>
                   <p className="text-sm text-slate-500 mb-2">Full Braille</p>
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap">
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap break-words overflow-auto max-w-full">
                     {brailleResult.fullBraille}
                   </div>
                 </div>
@@ -782,7 +786,7 @@ export function MicrosectionPage() {
               {brailleResult?.brf && (
                 <div>
                   <p className="text-sm text-slate-500 mb-2">BRF (Ready for embossing)</p>
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap">
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap break-words overflow-auto max-w-full">
                     {brailleResult.brf}
                   </div>
                 </div>
