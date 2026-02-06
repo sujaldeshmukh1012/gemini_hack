@@ -1,16 +1,21 @@
 import { Router } from "express";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
 import { eq, and } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { classes, curricula, storyAssets, storyAudioAssets } from "../db/schema.js";
+import {
+  storyAssets,
+  storyAudioAssets,
+  subjects,
+  gradeSubjects,
+  chapters,
+  lessons as lessonsTable,
+} from "../db/schema.js";
 import { callGeminiJson, hasGeminiApiKey } from "../utils/gemini.js";
 import { generateImage } from "../utils/imageGen.js";
 import { saveBase64File, saveBufferFile, storageConfig } from "../utils/storage.js";
 import { synthesizeSpeech } from "../utils/tts.js";
 import type {
-  StructuredChapter,
   StructuredSection,
   ArticleMicrosection,
   StorySlide,
@@ -18,9 +23,6 @@ import type {
 } from "../../types/index.js";
 
 const storyRouter = Router();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const SAFE_IMAGE_PREFIX = "Kid-safe educational comic illustration, friendly, bright, clean lines, no text, no logos, no violence, no gore, no adult themes";
 
@@ -82,51 +84,6 @@ storyRouter.get("/config/storage", (_req, res) => {
 const truncate = (value: string, max = 1200) => {
   if (!value) return "";
   return value.length > max ? `${value.slice(0, max)}...` : value;
-};
-
-const resolveClassToFilePrefix = async (classIdOrSlug: string): Promise<string | null> => {
-  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classIdOrSlug);
-
-  if (isUUID) {
-    const [classEntity] = await db
-      .select({
-        classSlug: classes.slug,
-        curriculumSlug: curricula.slug,
-      })
-      .from(classes)
-      .innerJoin(curricula, eq(curricula.id, classes.curriculumId))
-      .where(eq(classes.id, classIdOrSlug))
-      .limit(1);
-
-    if (!classEntity) return null;
-    const classSlugForFile = classEntity.classSlug.replace("-", "");
-    return `${classEntity.curriculumSlug}_${classSlugForFile}`;
-  }
-
-  return classIdOrSlug;
-};
-
-const loadStructuredChapter = async (
-  classId: string,
-  subjectId: string,
-  chapterSlug: string
-): Promise<StructuredChapter | null> => {
-  const filePrefix = await resolveClassToFilePrefix(classId);
-  if (!filePrefix) return null;
-
-  const dataPath = path.join(__dirname, "../../data/lessons", `${filePrefix}_${subjectId}.json`);
-  const fallbackPath = path.join(__dirname, "../../data/lessons", "cbse_class11_physics.json");
-
-  let data: StructuredChapter[];
-
-  if (!fs.existsSync(dataPath)) {
-    if (!fs.existsSync(fallbackPath)) return null;
-    data = JSON.parse(fs.readFileSync(fallbackPath, "utf-8"));
-  } else {
-    data = JSON.parse(fs.readFileSync(dataPath, "utf-8"));
-  }
-
-  return data.find((chapter) => chapter.chapterId === chapterSlug) || null;
 };
 
 const getArticleMicrosection = (section: StructuredSection): ArticleMicrosection | null => {
@@ -248,15 +205,63 @@ storyRouter.post("/generate", async (req, res) => {
       return res.json(existing);
     }
 
-    const chapter = await loadStructuredChapter(classId, subjectId, chapterSlug);
-    if (!chapter) {
-      return res.status(404).json({ error: "Chapter not found" });
+    // Load the section from the DB to ensure it matches what the UI is showing.
+    const [subject] = await db
+      .select()
+      .from(subjects)
+      .where(eq(subjects.slug, subjectId))
+      .limit(1);
+    if (!subject) {
+      return res.status(404).json({ error: `Subject '${subjectId}' not found` });
     }
 
-    const section = chapter.sections.find((s) => s.slug === sectionSlug);
-    if (!section) {
-      return res.status(404).json({ error: "Section not found" });
+    const [gradeSubject] = await db
+      .select()
+      .from(gradeSubjects)
+      .where(
+        and(eq(gradeSubjects.classId, classId), eq(gradeSubjects.subjectId, subject.id))
+      )
+      .limit(1);
+
+    if (!gradeSubject) {
+      return res.status(404).json({ error: "GradeSubject not found for class and subject" });
     }
+
+    const [chapter] = await db
+      .select()
+      .from(chapters)
+      .where(
+        and(eq(chapters.gradeSubjectId, gradeSubject.id), eq(chapters.slug, chapterSlug))
+      )
+      .limit(1);
+
+    if (!chapter) {
+      return res.status(404).json({ error: `Chapter '${chapterSlug}' not found` });
+    }
+
+    const [lesson] = await db
+      .select()
+      .from(lessonsTable)
+      .where(and(eq(lessonsTable.chapterId, chapter.id), eq(lessonsTable.slug, sectionSlug)))
+      .limit(1);
+
+    if (!lesson) {
+      return res.status(404).json({ error: `Section '${sectionSlug}' not found` });
+    }
+
+    const lessonContent = lesson.content as any;
+    const microsections = Array.isArray(lessonContent?.microsections)
+      ? (lessonContent.microsections as any[])
+      : [];
+
+    const section = {
+      ...(lessonContent || {}),
+      id: lessonContent?.id || sectionSlug,
+      slug: lessonContent?.slug || sectionSlug,
+      title: lesson.title || lessonContent?.title || "Section",
+      description: lessonContent?.description || "",
+      microsections,
+    } as StructuredSection;
 
     const article = getArticleMicrosection(section);
     if (!article) {
@@ -281,7 +286,7 @@ storyRouter.post("/generate", async (req, res) => {
         .returning();
     }
 
-    const prompt = buildStoryPrompt(section, article, chapter.chapterTitle);
+    const prompt = buildStoryPrompt(section, article, chapter.name);
     const storyJson = await callGeminiJson<{ slides: StorySlideDraft[] }>(prompt);
 
     if (!storyJson || !Array.isArray(storyJson.slides) || storyJson.slides.length === 0) {

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { SupportedLanguage } from '../../utils/language';
 import { loadLanguagePreference, saveLanguagePreference } from '../../utils/language';
 import { useAuth } from '../../hooks/useAuth';
+import { apiUrl } from '../../utils/api';
 
 interface LanguageContextValue {
   language: SupportedLanguage;
@@ -42,7 +43,7 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
 
     if (user) {
       try {
-        await fetch('http://localhost:8000/api/auth/preferences', {
+        await fetch(apiUrl('/api/auth/preferences'), {
           method: 'PUT',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },

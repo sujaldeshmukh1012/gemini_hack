@@ -127,6 +127,8 @@ export type TranslationKey =
   | 'guide.voice.focus'
   | 'guide.voice.play'
   | 'guide.voice.dashboard'
+  | 'guide.voice.scroll'
+  | 'guide.voice.back'
   | 'guide.readingSupport'
   | 'guide.reading.largeText'
   | 'guide.reading.story'
@@ -146,6 +148,7 @@ export type TranslationKey =
   | 'controls.captions'
   | 'controls.signs'
   | 'controls.calmMotion'
+  | 'controls.voiceAutoStart'
   | 'controls.language'
   | 'setup.preferences'
   | 'story.mode'
@@ -292,6 +295,8 @@ export const translations: Record<'en' | 'es' | 'hi', Translations> = {
     'guide.voice.focus': '"Enable focus mode" - distraction-free layout',
     'guide.voice.play': '"Play / pause / resume / stop" - control narration',
     'guide.voice.dashboard': '"Go to dashboard" - navigation',
+    'guide.voice.scroll': '"Scroll down / up" - move the page',
+    'guide.voice.back': '"Go back" - return to the previous page',
     'guide.readingSupport': 'Reading Support',
     'guide.reading.largeText': 'Enable Large Text for easier reading.',
     'guide.reading.story': 'Use Story Mode to get narrated visual explanations with captions.',
@@ -311,6 +316,7 @@ export const translations: Record<'en' | 'es' | 'hi', Translations> = {
     'controls.captions': 'Captions',
     'controls.signs': 'Signs',
     'controls.calmMotion': 'Calm Motion',
+    'controls.voiceAutoStart': 'Auto-start Voice',
     'controls.language': 'Language',
     'setup.preferences': 'Preferences',
     'story.mode': 'Story Mode',
@@ -454,6 +460,8 @@ export const translations: Record<'en' | 'es' | 'hi', Translations> = {
     'guide.voice.focus': '"Activar modo enfoque" - diseño sin distracciones',
     'guide.voice.play': '"Reproducir / pausar / reanudar / detener" - controlar narración',
     'guide.voice.dashboard': '"Ir al panel" - navegación',
+    'guide.voice.scroll': '"Desplazar abajo / arriba" - mover la página',
+    'guide.voice.back': '"Volver" - regresar a la página anterior',
     'guide.readingSupport': 'Apoyo de lectura',
     'guide.reading.largeText': 'Activa texto grande para leer mejor.',
     'guide.reading.story': 'Usa Modo Historia para explicaciones narradas con subtítulos.',
@@ -473,6 +481,7 @@ export const translations: Record<'en' | 'es' | 'hi', Translations> = {
     'controls.captions': 'Subtítulos',
     'controls.signs': 'Señas',
     'controls.calmMotion': 'Movimiento suave',
+    'controls.voiceAutoStart': 'Iniciar voz automáticamente',
     'controls.language': 'Idioma',
     'setup.preferences': 'Preferencias',
     'story.mode': 'Modo Historia',
@@ -616,6 +625,8 @@ export const translations: Record<'en' | 'es' | 'hi', Translations> = {
     'guide.voice.focus': '"फ़ोकस मोड चालू करें" - ध्यान भंग कम करें',
     'guide.voice.play': '"प्ले / पॉज़ / रेज़्यूम / स्टॉप" - वाचन नियंत्रण',
     'guide.voice.dashboard': '"डैशबोर्ड पर जाएँ" - नेविगेशन',
+    'guide.voice.scroll': '"नीचे / ऊपर स्क्रॉल" - पेज पर जाएँ',
+    'guide.voice.back': '"वापस जाएँ" - पिछला पेज खोलें',
     'guide.readingSupport': 'रीडिंग सपोर्ट',
     'guide.reading.largeText': 'आसान पढ़ने के लिए बड़ा टेक्स्ट ऑन करें।',
     'guide.reading.story': 'कहानी मोड से वाचित विज़ुअल व्याख्या लें।',
@@ -635,6 +646,7 @@ export const translations: Record<'en' | 'es' | 'hi', Translations> = {
     'controls.captions': 'कैप्शन',
     'controls.signs': 'साइन',
     'controls.calmMotion': 'शांत मोशन',
+    'controls.voiceAutoStart': 'ऑटो-स्टार्ट वॉइस',
     'controls.language': 'भाषा',
     'setup.preferences': 'प्राथमिकताएँ',
     'story.mode': 'कहानी मोड',

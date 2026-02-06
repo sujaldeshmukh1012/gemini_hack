@@ -4,9 +4,13 @@
  */
 import type { SubjectWithChapters, StructuredChapter } from '../types';
 import { apiUrl } from '../utils/api';
+import type { To } from 'react-router-dom';
+import type { SupportedLanguage } from '../utils/language';
+import { saveLanguagePreference } from '../utils/language';
+import { loadAccessibilityPreferences, saveAccessibilityPreferences } from '../utils/accessibility';
 
 export interface CommandExecutorDependencies {
-  navigate: (path: string, options?: any) => void;
+  navigate: (to: To, options?: any) => void;
   user: any;
   availableSubjects: SubjectWithChapters[];
 }
@@ -55,6 +59,11 @@ export class CommandExecutor {
             result = { success, subject: call.args.subject, chapterNumber: call.args.chapterNumber, lessonNumber: call.args.lessonNumber, contentType: call.args.contentType };
             break;
 
+          case 'openChapter':
+            success = await this.openChapter(call.args.subject, call.args.chapterNumber);
+            result = { success, subject: call.args.subject, chapterNumber: call.args.chapterNumber };
+            break;
+
           case 'lessonControl':
             success = this.lessonControl(call.args.action);
             result = { success, action: call.args.action };
@@ -90,6 +99,51 @@ export class CommandExecutor {
             result = { success };
             break;
 
+          case 'setLanguage':
+            success = await this.setLanguage(call.args.language);
+            result = { success, language: call.args.language };
+            break;
+
+          case 'toggleLargeText':
+            success = this.toggleAccessibility('largeText');
+            result = { success };
+            break;
+
+          case 'toggleCaptions':
+            success = this.toggleAccessibility('captionsOn');
+            result = { success };
+            break;
+
+          case 'toggleSigns':
+            success = this.toggleAccessibility('signsOn');
+            result = { success };
+            break;
+
+          case 'toggleReduceMotion':
+            success = this.toggleAccessibility('reduceMotion');
+            result = { success };
+            break;
+
+          case 'quizSelectOption':
+            success = this.quizSelectOption(call.args.questionNumber, call.args.option, call.args.optionText);
+            result = { success, questionNumber: call.args.questionNumber, option: call.args.option, optionText: call.args.optionText };
+            break;
+
+          case 'quizSubmit':
+            success = this.quizSubmit();
+            result = { success };
+            break;
+
+          case 'scrollPage':
+            success = this.scrollPage(call.args.direction, call.args.amountPx);
+            result = { success, direction: call.args.direction, amountPx: call.args.amountPx };
+            break;
+
+          case 'navigateHistory':
+            success = this.navigateHistory(call.args.delta);
+            result = { success, delta: call.args.delta };
+            break;
+
           default:
             console.warn('[CommandExecutor] Unknown tool:', call.name);
             result = { success: false, error: 'Unknown tool' };
@@ -112,6 +166,102 @@ export class CommandExecutor {
     }
 
     return responses;
+  }
+
+  /**
+   * Execute a JSON "command" object (fallback when model returns text instead of tool calls).
+   */
+  async executeCommand(command: any): Promise<boolean> {
+    if (!command || typeof command !== 'object') return false;
+
+    const type = String(command.type || '');
+    const action = command.action !== undefined ? String(command.action) : undefined;
+    const params = (command.params && typeof command.params === 'object') ? command.params : {};
+
+    try {
+      switch (type) {
+        case 'navigate': {
+          if (!action) return false;
+          if (action === 'chapter' || action === 'lesson') {
+            const subject = params.subject;
+            const chapterNumber = params.chapterNumber;
+            const lessonNumber = params.lessonNumber;
+
+            if (typeof chapterNumber !== 'number') return false;
+            if (action === 'chapter') {
+              return await this.openChapter(typeof subject === 'string' ? subject : undefined, chapterNumber);
+            }
+
+            const ok = await this.openLesson(typeof subject === 'string' ? subject : undefined, chapterNumber, lessonNumber, params.contentType);
+            if (ok) this.lessonControl('play');
+            return ok;
+          }
+
+          return await this.navigate(action);
+        }
+
+        case 'lesson_control': {
+          if (!action) return false;
+          return this.lessonControl(action);
+        }
+
+        case 'discovery': {
+          if (!action) return false;
+          if (action === 'list_subjects') {
+            await this.listSubjects();
+            return true;
+          }
+          if (action === 'list_chapters') {
+            await this.listChapters(params.subject);
+            return true;
+          }
+          return true;
+        }
+
+        default:
+          return false;
+      }
+    } catch (e) {
+      console.warn('[CommandExecutor] executeCommand failed:', e);
+      return false;
+    }
+  }
+
+  private findSubject(subjectName?: string): SubjectWithChapters | null {
+    const subjects = this.deps.availableSubjects || [];
+
+    const normalize = (s: string) => s.toLowerCase().trim();
+
+    if (subjectName && typeof subjectName === 'string' && subjectName.trim()) {
+      const needle = normalize(subjectName);
+      const bySlug = subjects.find((s) => normalize(s.slug) === needle);
+      if (bySlug) return bySlug;
+
+      const byName = subjects.find((s) => normalize(s.name).includes(needle) || needle.includes(normalize(s.name)));
+      if (byName) return byName;
+    }
+
+    // Infer subject from the current route: /:classId/:subjectId/:chapterSlug/...
+    try {
+      const segments = window.location.pathname.split('/').filter(Boolean);
+      const subjectSlugFromPath = segments[1];
+      if (subjectSlugFromPath) {
+        const bySlug = subjects.find((s) => normalize(s.slug) === normalize(subjectSlugFromPath));
+        if (bySlug) return bySlug;
+      }
+    } catch {
+      // ignore
+    }
+
+    if (subjects.length === 1) return subjects[0];
+    return null;
+  }
+
+  private getChapterByNumber(subject: SubjectWithChapters, chapterNumber: number) {
+    const sortedChapters = [...subject.chapters].sort((a, b) =>
+      (a.sortOrder || 0) - (b.sortOrder || 0)
+    );
+    return sortedChapters[chapterNumber - 1] || null;
   }
 
   private toggleFocusMode(enabled?: boolean): boolean {
@@ -147,6 +297,112 @@ export class CommandExecutor {
     }
   }
 
+  private toggleAccessibility(key: 'largeText' | 'captionsOn' | 'signsOn' | 'reduceMotion'): boolean {
+    try {
+      const current = loadAccessibilityPreferences();
+      const next = { ...current, [key]: !current[key] };
+      saveAccessibilityPreferences(next);
+      return true;
+    } catch (error) {
+      console.error('[CommandExecutor] Failed to toggle accessibility setting:', key, error);
+      return false;
+    }
+  }
+
+  private async setLanguage(language: string): Promise<boolean> {
+    const normalized = String(language || '').toLowerCase().trim();
+    if (normalized !== 'en' && normalized !== 'es' && normalized !== 'hi') {
+      return false;
+    }
+
+    const next = normalized as SupportedLanguage;
+    saveLanguagePreference(next);
+
+    if (this.deps.user) {
+      try {
+        await fetch(apiUrl('/api/auth/preferences'), {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ language: next })
+        });
+      } catch (error) {
+        console.warn('[CommandExecutor] Failed to persist language preference', error);
+      }
+    }
+
+    return true;
+  }
+
+  private quizSelectOption(questionNumber?: number, option?: string, optionText?: string): boolean {
+    try {
+      const event = new CustomEvent('quiz-control', {
+        detail: {
+          action: 'select',
+          questionNumber,
+          option,
+          optionText,
+        }
+      });
+      window.dispatchEvent(event);
+      return true;
+    } catch (error) {
+      console.error('[CommandExecutor] Failed to select quiz option:', error);
+      return false;
+    }
+  }
+
+  private quizSubmit(): boolean {
+    try {
+      const event = new CustomEvent('quiz-control', { detail: { action: 'submit' } });
+      window.dispatchEvent(event);
+      return true;
+    } catch (error) {
+      console.error('[CommandExecutor] Failed to submit quiz:', error);
+      return false;
+    }
+  }
+
+  private scrollPage(direction: string, amountPx?: number): boolean {
+    try {
+      const normalized = String(direction || '').toLowerCase();
+      const amount = typeof amountPx === 'number' && Number.isFinite(amountPx) ? amountPx : 400;
+
+      if (normalized === 'top') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return true;
+      }
+      if (normalized === 'bottom') {
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+        return true;
+      }
+      if (normalized === 'up') {
+        window.scrollBy({ top: -amount, behavior: 'smooth' });
+        return true;
+      }
+      if (normalized === 'down') {
+        window.scrollBy({ top: amount, behavior: 'smooth' });
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('[CommandExecutor] Failed to scroll page:', error);
+      return false;
+    }
+  }
+
+  private navigateHistory(delta: number): boolean {
+    try {
+      if (typeof delta !== 'number' || !Number.isFinite(delta)) return false;
+      window.history.go(delta);
+      return true;
+    } catch (error) {
+      console.error('[CommandExecutor] Failed to navigate history:', error);
+      return false;
+    }
+  }
+
   /**
    * Navigate to a page in the app
    */
@@ -175,7 +431,7 @@ export class CommandExecutor {
   /**
    * Open a specific lesson by subject and chapter number
    */
-  private async openLesson(subjectName: string, chapterNumber: number, lessonNumber?: number, contentType?: string): Promise<boolean> {
+  private async openLesson(subjectName: string | undefined, chapterNumber: number, lessonNumber?: number, contentType?: string): Promise<boolean> {
     try {
       if (!this.deps.user?.profile?.classId) {
         console.error('[CommandExecutor] No user profile');
@@ -184,22 +440,14 @@ export class CommandExecutor {
 
       const classId = this.deps.user.profile.classId;
 
-      // Find subject (case-insensitive partial match)
-      const subject = this.deps.availableSubjects.find(s =>
-        s.name.toLowerCase().includes(subjectName.toLowerCase())
-      );
+      const subject = this.findSubject(subjectName);
 
       if (!subject) {
         console.error('[CommandExecutor] Subject not found:', subjectName);
         return false;
       }
 
-      // Find chapter by number (sorted by sortOrder)
-      const sortedChapters = [...subject.chapters].sort((a, b) =>
-        (a.sortOrder || 0) - (b.sortOrder || 0)
-      );
-
-      const chapter = sortedChapters[chapterNumber - 1];
+      const chapter = this.getChapterByNumber(subject, chapterNumber);
 
       if (!chapter) {
         console.error('[CommandExecutor] Chapter not found at index:', chapterNumber - 1);
@@ -264,6 +512,39 @@ export class CommandExecutor {
       return true;
     } catch (error) {
       console.error('[CommandExecutor] Open lesson error:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Open a specific chapter (chapter overview page) by subject and chapter number
+   */
+  private async openChapter(subjectName: string | undefined, chapterNumber: number): Promise<boolean> {
+    try {
+      if (!this.deps.user?.profile?.classId) {
+        console.error('[CommandExecutor] No user profile');
+        return false;
+      }
+
+      const classId = this.deps.user.profile.classId;
+      const subject = this.findSubject(subjectName);
+
+      if (!subject) {
+        console.error('[CommandExecutor] Subject not found:', subjectName);
+        return false;
+      }
+
+      const chapter = this.getChapterByNumber(subject, chapterNumber);
+      if (!chapter) {
+        console.error('[CommandExecutor] Chapter not found at index:', chapterNumber - 1);
+        return false;
+      }
+
+      const route = `/${classId}/${subject.slug}/${chapter.slug}`;
+      this.deps.navigate(route);
+      return true;
+    } catch (error) {
+      console.error('[CommandExecutor] Open chapter error:', error);
       return false;
     }
   }

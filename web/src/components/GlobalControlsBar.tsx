@@ -1,6 +1,7 @@
 import { useAccessibility } from './accessibility/AccessibilityProvider';
 import { useLanguage } from './i18n/LanguageProvider';
 import { useI18n } from './i18n/useI18n';
+import { useVoiceAgent } from './VoiceAgentProvider';
 
 export const GlobalControlsBar = () => {
   const {
@@ -15,6 +16,7 @@ export const GlobalControlsBar = () => {
     toggleCaptions,
     toggleSigns,
   } = useAccessibility();
+  const { autoStartEnabled, setAutoStartEnabled } = useVoiceAgent();
   const { language, setLanguage } = useLanguage();
   const { t } = useI18n();
 
@@ -71,6 +73,16 @@ export const GlobalControlsBar = () => {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setAutoStartEnabled(!autoStartEnabled)}
+            aria-pressed={autoStartEnabled}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
+              autoStartEnabled ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-700 border-slate-200'
+            }`}
+            title={t('controls.voiceAutoStart')}
+          >
+            {t('controls.voiceAutoStart')}
+          </button>
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('controls.language')}</label>
           <select
             value={language}

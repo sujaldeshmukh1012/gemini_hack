@@ -8,12 +8,15 @@ import type { SubjectWithChapters } from '../types';
 import { fetchSubjectsWithChapters } from '../data/curriculumData';
 import { toolDeclarations } from '../utils/toolDeclarations';
 import { CommandExecutor } from '../services/commandExecutor';
+import { loadVoiceAgentSettings, saveVoiceAgentSettings } from '../utils/voiceAgentSettings';
 
 interface VoiceAgentContextType {
   isListening: boolean;
   isSupported: boolean;
   transcript: string;
   error: string | null;
+  autoStartEnabled: boolean;
+  setAutoStartEnabled: (value: boolean) => void;
   startListening: () => void;
   stopListening: () => void;
   toggleListening: () => void;
@@ -33,6 +36,29 @@ interface VoiceAgentProviderProps {
   children: React.ReactNode;
 }
 
+const stripJsonCodeFence = (text: string) => {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('```')) return trimmed;
+  return trimmed.replace(/^```[a-zA-Z]*\s*/m, '').replace(/```$/m, '').trim();
+};
+
+const tryParseJsonFromText = (text: string): any | null => {
+  const cleaned = stripJsonCodeFence(text);
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start === -1 || end === -1 || end <= start) return null;
+    const slice = cleaned.slice(start, end + 1);
+    try {
+      return JSON.parse(slice);
+    } catch {
+      return null;
+    }
+  }
+};
+
 export const VoiceAgentProvider: React.FC<VoiceAgentProviderProps> = ({
   children,
 }) => {
@@ -43,8 +69,13 @@ export const VoiceAgentProvider: React.FC<VoiceAgentProviderProps> = ({
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [availableSubjects, setAvailableSubjects] = useState<SubjectWithChapters[]>([]);
+  const [autoStartEnabled, setAutoStartEnabled] = useState<boolean>(() => {
+    const settings = loadVoiceAgentSettings();
+    return settings.autoStart === true;
+  });
 
   const audioRecorderRef = useRef<AudioRecorder | null>(null);
+  const autoStartAttemptedRef = useRef(false);
 
   // Load subjects when user profile is available
   useEffect(() => {
@@ -78,6 +109,7 @@ export const VoiceAgentProvider: React.FC<VoiceAgentProviderProps> = ({
     connected: isConnected, 
     connect, 
     setConfig,
+    config,
   } = useGeminiLive();
 
   // Set up Gemini Live API config with tool declarations
@@ -104,6 +136,10 @@ Available commands:
 - Lesson Control: play, pause, resume, stop, next, previous
 - Discovery: list_chapters, list_subjects, current_lesson, help
 - Accessibility: focus_mode, braille, story_mode
+- Chapter/Lesson: open chapter N, start lesson N (use openChapter/openLesson tool calls)
+- Top bar: change language to English/Spanish/Hindi, toggle captions/signs/large text/calm motion (use setLanguage + toggle* tools)
+- Quiz: "Question 1 option A", "Choose true for question 2", "Submit quiz" (use quizSelectOption/quizSubmit tools)
+- Page control: scroll up/down/top/bottom, go back (use scrollPage + navigateHistory tool calls)
 
 Be friendly and helpful. Speak naturally and wait for the user to finish speaking before responding.`,
       realtimeInputConfig: {
@@ -125,6 +161,11 @@ Be friendly and helpful. Speak naturally and wait for the user to finish speakin
     setConfig(config);
   }, [setConfig]);
 
+  // Persist voice agent settings
+  useEffect(() => {
+    saveVoiceAgentSettings({ autoStart: autoStartEnabled });
+  }, [autoStartEnabled]);
+
   // Tool call handler - Execute commands from Gemini using CommandExecutor
   useEffect(() => {
     const onToolCall = async (toolCall: any) => {
@@ -144,7 +185,15 @@ Be friendly and helpful. Speak naturally and wait for the user to finish speakin
       if (data.modelTurn?.parts) {
         for (const part of data.modelTurn.parts) {
           if (part.text) {
-            console.log('[Voice Agent] Gemini text response:', part.text);
+            const rawText = String(part.text);
+            console.log('[Voice Agent] Gemini text response:', rawText);
+
+            const parsed = tryParseJsonFromText(rawText);
+            if (parsed?.hasCommand && parsed?.command) {
+              commandExecutor.executeCommand(parsed.command).catch((e) => {
+                console.warn('[Voice Agent] Failed to execute JSON command:', e);
+              });
+            }
           }
         }
       }
@@ -233,6 +282,23 @@ Be friendly and helpful. Speak naturally and wait for the user to finish speakin
     }
   }, [isConnected, connect, client]);
 
+  // Auto-start listening on app start (if enabled). Only try once until toggled off/on.
+  useEffect(() => {
+    const configReady = !!config && Object.keys(config).length > 0;
+
+    if (!autoStartEnabled) {
+      autoStartAttemptedRef.current = false;
+      return;
+    }
+    if (!configReady) return;
+    if (!isSupported) return;
+    if (isListening) return;
+    if (autoStartAttemptedRef.current) return;
+
+    autoStartAttemptedRef.current = true;
+    startListening();
+  }, [autoStartEnabled, config, isSupported, isListening, startListening]);
+
   // Disconnect when stopping
   const stopListening = useCallback(() => {
     audioRecorderRef.current?.stop();
@@ -257,6 +323,8 @@ Be friendly and helpful. Speak naturally and wait for the user to finish speakin
     isSupported,
     transcript,
     error,
+    autoStartEnabled,
+    setAutoStartEnabled,
     startListening,
     stopListening,
     toggleListening,

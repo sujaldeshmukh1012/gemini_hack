@@ -108,7 +108,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
             return done(new Error("Name is required"), undefined);
           }
           const userInfo = {
-            user_id: userId,
+            id: userId,
             name: name,
             email: email,
           };

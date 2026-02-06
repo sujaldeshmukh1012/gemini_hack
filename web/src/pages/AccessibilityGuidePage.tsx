@@ -33,6 +33,8 @@ const AccessibilityGuidePage = () => {
             <li>{t('guide.voice.focus')}</li>
             <li>{t('guide.voice.play')}</li>
             <li>{t('guide.voice.dashboard')}</li>
+            <li>{t('guide.voice.scroll')}</li>
+            <li>{t('guide.voice.back')}</li>
           </ul>
         </section>
 

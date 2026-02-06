@@ -41,7 +41,25 @@ export const toolDeclarations: FunctionDeclaration[] = [
           description: "The type of content to open: article, video, quiz, or practice"
         }
       },
-      required: ["subject", "chapterNumber"]
+      required: ["chapterNumber"]
+    }
+  },
+  {
+    name: "openChapter",
+    description: "Open a chapter (chapter overview page) by subject and chapter number",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        subject: {
+          type: Type.STRING,
+          description: "Optional subject name such as physics, mathematics, chemistry, biology"
+        },
+        chapterNumber: {
+          type: Type.NUMBER,
+          description: "The chapter number starting from 1"
+        }
+      },
+      required: ["chapterNumber"]
     }
   },
   {
@@ -114,6 +132,98 @@ export const toolDeclarations: FunctionDeclaration[] = [
     parameters: {
       type: Type.OBJECT,
       properties: {}
+    }
+  },
+  {
+    name: "setLanguage",
+    description: "Set the app language (English, Spanish, Hindi).",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        language: {
+          type: Type.STRING,
+          description: "Language code: en, es, hi"
+        }
+      },
+      required: ["language"]
+    }
+  },
+  {
+    name: "toggleLargeText",
+    description: "Toggle Large Text mode in the top bar.",
+    parameters: { type: Type.OBJECT, properties: {} }
+  },
+  {
+    name: "toggleCaptions",
+    description: "Toggle Captions mode in the top bar.",
+    parameters: { type: Type.OBJECT, properties: {} }
+  },
+  {
+    name: "toggleSigns",
+    description: "Toggle Signs mode in the top bar.",
+    parameters: { type: Type.OBJECT, properties: {} }
+  },
+  {
+    name: "toggleReduceMotion",
+    description: "Toggle Calm Motion / Reduce Motion mode in the top bar.",
+    parameters: { type: Type.OBJECT, properties: {} }
+  },
+  {
+    name: "quizSelectOption",
+    description: "Select a quiz/practice answer option. Example: questionNumber=1 and option='A' or option='true'. If questionNumber is omitted, selects for the first unanswered question.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        questionNumber: {
+          type: Type.NUMBER,
+          description: "1-based question number (optional)"
+        },
+        option: {
+          type: Type.STRING,
+          description: "Option to pick: A, B, C, D... or true/false"
+        },
+        optionText: {
+          type: Type.STRING,
+          description: "Optional: match an option by text (case-insensitive substring match)."
+        }
+      }
+    }
+  },
+  {
+    name: "quizSubmit",
+    description: "Submit the current quiz/practice if all questions are answered.",
+    parameters: { type: Type.OBJECT, properties: {} }
+  },
+  {
+    name: "scrollPage",
+    description: "Scroll the current page (up/down/top/bottom). Use this for 'scroll down a bit' style requests.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        direction: {
+          type: Type.STRING,
+          description: "Scroll direction: up, down, top, bottom"
+        },
+        amountPx: {
+          type: Type.NUMBER,
+          description: "Optional pixels to scroll for up/down. If omitted, scrolls a sensible default."
+        }
+      },
+      required: ["direction"]
+    }
+  },
+  {
+    name: "navigateHistory",
+    description: "Navigate browser history within the app. Use delta=-1 for back, delta=1 for forward.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        delta: {
+          type: Type.NUMBER,
+          description: "History delta. Example: -1 (back), 1 (forward)"
+        }
+      },
+      required: ["delta"]
     }
   }
 ];

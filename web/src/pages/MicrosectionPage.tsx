@@ -248,15 +248,94 @@ const QuizViewer: React.FC<{ content: QuizMicrosection['content']; t: (key: any)
   const [submitted, setSubmitted] = useState(false);
   const [showResults, setShowResults] = useState(false);
 
-  const handleAnswer = (questionId: string, answer: string | number) => {
+  const handleAnswer = useCallback((questionId: string, answer: string | number) => {
     if (submitted) return;
     setAnswers(prev => ({ ...prev, [questionId]: answer }));
-  };
+  }, [submitted]);
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     setSubmitted(true);
     setShowResults(true);
-  };
+  }, []);
+
+  useEffect(() => {
+    const normalize = (value: string) => value.toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    const optionLetterToIndex = (value: string) => {
+      const trimmed = value.trim().toUpperCase();
+      if (!trimmed) return null;
+      const code = trimmed.charCodeAt(0);
+      if (code >= 65 && code <= 90) return code - 65;
+      return null;
+    };
+
+    const findFirstUnansweredQuestion = () => {
+      return content.questions.find((q) => answers[q.id] === undefined) || content.questions[0];
+    };
+
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent).detail as
+        | { action?: string; questionNumber?: number; option?: string; optionText?: string }
+        | undefined;
+
+      if (!detail?.action) return;
+      if (detail.action === 'submit') {
+        handleSubmit();
+        return;
+      }
+
+      if (detail.action !== 'select') return;
+
+      const question =
+        typeof detail.questionNumber === 'number' && detail.questionNumber > 0
+          ? content.questions[detail.questionNumber - 1]
+          : findFirstUnansweredQuestion();
+
+      if (!question) return;
+
+      const option = detail.option ? String(detail.option) : '';
+      const optionText = detail.optionText ? String(detail.optionText) : '';
+
+      if (question.type === 'multiple-choice' && Array.isArray(question.options)) {
+        let optIndex: number | null = null;
+
+        if (optionText) {
+          const needle = normalize(optionText);
+          optIndex = question.options.findIndex((o) => normalize(String(o)).includes(needle));
+          if (optIndex < 0) optIndex = null;
+        }
+
+        if (optIndex === null && option) {
+          optIndex = optionLetterToIndex(option);
+        }
+
+        if (optIndex === null) return;
+        if (optIndex < 0 || optIndex >= question.options.length) return;
+
+        handleAnswer(question.id, optIndex);
+        return;
+      }
+
+      if (question.type === 'true-false') {
+        const normalized = normalize(option || optionText);
+        if (!normalized) return;
+
+        const value =
+          normalized === 'true' || normalized === 't' || normalized === 'yes'
+            ? 'true'
+            : normalized === 'false' || normalized === 'f' || normalized === 'no'
+              ? 'false'
+              : null;
+
+        if (!value) return;
+        handleAnswer(question.id, value);
+      }
+    };
+
+    window.addEventListener('quiz-control', handler as EventListener);
+    return () => {
+      window.removeEventListener('quiz-control', handler as EventListener);
+    };
+  }, [content.questions, answers, handleAnswer, handleSubmit]);
 
   const score = useMemo(() => {
     if (!submitted) return 0;
@@ -660,7 +739,7 @@ export function MicrosectionPage() {
     setIsStoryLoading(true);
     setStoryError(null);
     try {
-      const response = await fetch('http://localhost:8000/api/story/generate', {
+      const response = await fetch(apiUrl('/api/story/generate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -689,9 +768,7 @@ export function MicrosectionPage() {
   const preloadStory = async () => {
     if (!classId || !subjectId || !chapterSlug || !sectionSlug) return;
     try {
-      const response = await fetch(
-        `http://localhost:8000/api/story/${classId}/${subjectId}/${chapterSlug}/${sectionSlug}`
-      );
+      const response = await fetch(apiUrl(`/api/story/${classId}/${subjectId}/${chapterSlug}/${sectionSlug}`));
       if (!response.ok) {
         return;
       }
@@ -709,7 +786,7 @@ export function MicrosectionPage() {
     if (!targetStory) return;
     setIsAudioLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/api/story/audio', {
+      const response = await fetch(apiUrl('/api/story/audio'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -757,7 +834,7 @@ export function MicrosectionPage() {
       const article = data.microsection as ArticleMicrosection;
       const lessonText = extractArticleRawText(article.content);
 
-      const response = await fetch('http://localhost:8000/api/braille/convert', {
+      const response = await fetch(apiUrl('/api/braille/convert'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lesson: lessonText })
