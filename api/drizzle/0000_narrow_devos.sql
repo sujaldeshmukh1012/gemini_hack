@@ -1,4 +1,4 @@
-CREATE TABLE "braille_exports" (
+CREATE TABLE IF NOT EXISTS "braille_exports" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"content_key" text NOT NULL,
 	"version" integer NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE "braille_exports" (
 	CONSTRAINT "braille_exports_content_key_version_locale_scope_format_unique" UNIQUE("content_key","version","locale","scope","format")
 );
 --> statement-breakpoint
-CREATE TABLE "chapters" (
+CREATE TABLE IF NOT EXISTS "chapters" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"grade_subject_id" uuid NOT NULL,
 	"slug" text NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE "chapters" (
 	CONSTRAINT "chapters_grade_subject_id_slug_unique" UNIQUE("grade_subject_id","slug")
 );
 --> statement-breakpoint
-CREATE TABLE "classes" (
+CREATE TABLE IF NOT EXISTS "classes" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"curriculum_id" uuid NOT NULL,
 	"slug" text NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE "classes" (
 	CONSTRAINT "classes_curriculum_id_slug_unique" UNIQUE("curriculum_id","slug")
 );
 --> statement-breakpoint
-CREATE TABLE "content_translations" (
+CREATE TABLE IF NOT EXISTS "content_translations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"content_key" text NOT NULL,
 	"version" integer NOT NULL,
@@ -46,7 +46,7 @@ CREATE TABLE "content_translations" (
 	CONSTRAINT "content_translations_content_key_version_locale_unique" UNIQUE("content_key","version","locale")
 );
 --> statement-breakpoint
-CREATE TABLE "content_versions" (
+CREATE TABLE IF NOT EXISTS "content_versions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"content_key" text NOT NULL,
 	"version" integer NOT NULL,
@@ -57,7 +57,7 @@ CREATE TABLE "content_versions" (
 	CONSTRAINT "content_versions_content_key_version_unique" UNIQUE("content_key","version")
 );
 --> statement-breakpoint
-CREATE TABLE "curricula" (
+CREATE TABLE IF NOT EXISTS "curricula" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"slug" text NOT NULL,
 	"name" text NOT NULL,
@@ -66,7 +66,7 @@ CREATE TABLE "curricula" (
 	CONSTRAINT "curricula_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
-CREATE TABLE "generation_jobs" (
+CREATE TABLE IF NOT EXISTS "generation_jobs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"job_type" text NOT NULL,
 	"content_key" text NOT NULL,
@@ -83,7 +83,7 @@ CREATE TABLE "generation_jobs" (
 	CONSTRAINT "generation_jobs_idempotency_key_unique" UNIQUE("idempotency_key")
 );
 --> statement-breakpoint
-CREATE TABLE "grade_subjects" (
+CREATE TABLE IF NOT EXISTS "grade_subjects" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"class_id" uuid NOT NULL,
 	"subject_id" uuid NOT NULL,
@@ -92,7 +92,7 @@ CREATE TABLE "grade_subjects" (
 	CONSTRAINT "grade_subjects_class_id_subject_id_unique" UNIQUE("class_id","subject_id")
 );
 --> statement-breakpoint
-CREATE TABLE "lessons" (
+CREATE TABLE IF NOT EXISTS "lessons" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"chapter_id" uuid NOT NULL,
 	"slug" text NOT NULL,
@@ -104,7 +104,7 @@ CREATE TABLE "lessons" (
 	CONSTRAINT "lessons_chapter_id_slug_unique" UNIQUE("chapter_id","slug")
 );
 --> statement-breakpoint
-CREATE TABLE "microsections" (
+CREATE TABLE IF NOT EXISTS "microsections" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"chapter_id" uuid NOT NULL,
 	"type" text NOT NULL,
@@ -115,7 +115,7 @@ CREATE TABLE "microsections" (
 	CONSTRAINT "microsections_content_key_unique" UNIQUE("content_key")
 );
 --> statement-breakpoint
-CREATE TABLE "story_assets" (
+CREATE TABLE IF NOT EXISTS "story_assets" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"story_key" text NOT NULL,
 	"class_id" text NOT NULL,
@@ -133,7 +133,7 @@ CREATE TABLE "story_assets" (
 	CONSTRAINT "story_assets_story_key_unique" UNIQUE("story_key")
 );
 --> statement-breakpoint
-CREATE TABLE "story_audio" (
+CREATE TABLE IF NOT EXISTS "story_audio" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"content_key" text NOT NULL,
 	"version" integer NOT NULL,
@@ -150,7 +150,7 @@ CREATE TABLE "story_audio" (
 	CONSTRAINT "story_audio_content_key_version_locale_slide_index_voice_id_unique" UNIQUE("content_key","version","locale","slide_index","voice_id")
 );
 --> statement-breakpoint
-CREATE TABLE "story_audio_assets" (
+CREATE TABLE IF NOT EXISTS "story_audio_assets" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"story_id" uuid NOT NULL,
 	"locale" text NOT NULL,
@@ -162,7 +162,7 @@ CREATE TABLE "story_audio_assets" (
 	CONSTRAINT "story_audio_assets_story_id_locale_unique" UNIQUE("story_id","locale")
 );
 --> statement-breakpoint
-CREATE TABLE "story_plans" (
+CREATE TABLE IF NOT EXISTS "story_plans" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"content_key" text NOT NULL,
 	"version" integer NOT NULL,
@@ -174,7 +174,7 @@ CREATE TABLE "story_plans" (
 	CONSTRAINT "story_plans_content_key_version_locale_unique" UNIQUE("content_key","version","locale")
 );
 --> statement-breakpoint
-CREATE TABLE "story_slides" (
+CREATE TABLE IF NOT EXISTS "story_slides" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"content_key" text NOT NULL,
 	"version" integer NOT NULL,
@@ -192,7 +192,7 @@ CREATE TABLE "story_slides" (
 	CONSTRAINT "story_slides_content_key_version_locale_slide_index_unique" UNIQUE("content_key","version","locale","slide_index")
 );
 --> statement-breakpoint
-CREATE TABLE "subjects" (
+CREATE TABLE IF NOT EXISTS "subjects" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"slug" text NOT NULL,
 	"name" text NOT NULL,
@@ -201,7 +201,7 @@ CREATE TABLE "subjects" (
 	CONSTRAINT "subjects_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
-CREATE TABLE "user_chapters" (
+CREATE TABLE IF NOT EXISTS "user_chapters" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"chapter_id" uuid NOT NULL,
@@ -209,7 +209,7 @@ CREATE TABLE "user_chapters" (
 	CONSTRAINT "user_chapters_user_id_chapter_id_unique" UNIQUE("user_id","chapter_id")
 );
 --> statement-breakpoint
-CREATE TABLE "users" (
+CREATE TABLE IF NOT EXISTS "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"email" text NOT NULL,
 	"name" text NOT NULL,
@@ -224,14 +224,68 @@ CREATE TABLE "users" (
 	CONSTRAINT "users_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
-ALTER TABLE "chapters" ADD CONSTRAINT "chapters_grade_subject_id_grade_subjects_id_fk" FOREIGN KEY ("grade_subject_id") REFERENCES "public"."grade_subjects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "classes" ADD CONSTRAINT "classes_curriculum_id_curricula_id_fk" FOREIGN KEY ("curriculum_id") REFERENCES "public"."curricula"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "grade_subjects" ADD CONSTRAINT "grade_subjects_class_id_classes_id_fk" FOREIGN KEY ("class_id") REFERENCES "public"."classes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "grade_subjects" ADD CONSTRAINT "grade_subjects_subject_id_subjects_id_fk" FOREIGN KEY ("subject_id") REFERENCES "public"."subjects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "lessons" ADD CONSTRAINT "lessons_chapter_id_chapters_id_fk" FOREIGN KEY ("chapter_id") REFERENCES "public"."chapters"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "microsections" ADD CONSTRAINT "microsections_chapter_id_chapters_id_fk" FOREIGN KEY ("chapter_id") REFERENCES "public"."chapters"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "story_audio_assets" ADD CONSTRAINT "story_audio_assets_story_id_story_assets_id_fk" FOREIGN KEY ("story_id") REFERENCES "public"."story_assets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_chapters" ADD CONSTRAINT "user_chapters_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_chapters" ADD CONSTRAINT "user_chapters_chapter_id_chapters_id_fk" FOREIGN KEY ("chapter_id") REFERENCES "public"."chapters"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "users" ADD CONSTRAINT "users_curriculum_id_curricula_id_fk" FOREIGN KEY ("curriculum_id") REFERENCES "public"."curricula"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "users" ADD CONSTRAINT "users_class_id_classes_id_fk" FOREIGN KEY ("class_id") REFERENCES "public"."classes"("id") ON DELETE no action ON UPDATE no action;
+DO $$ BEGIN
+ ALTER TABLE "chapters" ADD CONSTRAINT "chapters_grade_subject_id_grade_subjects_id_fk" FOREIGN KEY ("grade_subject_id") REFERENCES "public"."grade_subjects"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "classes" ADD CONSTRAINT "classes_curriculum_id_curricula_id_fk" FOREIGN KEY ("curriculum_id") REFERENCES "public"."curricula"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "grade_subjects" ADD CONSTRAINT "grade_subjects_class_id_classes_id_fk" FOREIGN KEY ("class_id") REFERENCES "public"."classes"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "grade_subjects" ADD CONSTRAINT "grade_subjects_subject_id_subjects_id_fk" FOREIGN KEY ("subject_id") REFERENCES "public"."subjects"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "lessons" ADD CONSTRAINT "lessons_chapter_id_chapters_id_fk" FOREIGN KEY ("chapter_id") REFERENCES "public"."chapters"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "microsections" ADD CONSTRAINT "microsections_chapter_id_chapters_id_fk" FOREIGN KEY ("chapter_id") REFERENCES "public"."chapters"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "story_audio_assets" ADD CONSTRAINT "story_audio_assets_story_id_story_assets_id_fk" FOREIGN KEY ("story_id") REFERENCES "public"."story_assets"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "user_chapters" ADD CONSTRAINT "user_chapters_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "user_chapters" ADD CONSTRAINT "user_chapters_chapter_id_chapters_id_fk" FOREIGN KEY ("chapter_id") REFERENCES "public"."chapters"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "users" ADD CONSTRAINT "users_curriculum_id_curricula_id_fk" FOREIGN KEY ("curriculum_id") REFERENCES "public"."curricula"("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "users" ADD CONSTRAINT "users_class_id_classes_id_fk" FOREIGN KEY ("class_id") REFERENCES "public"."classes"("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
