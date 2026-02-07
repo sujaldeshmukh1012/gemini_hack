@@ -17,7 +17,7 @@ import AdminChapterReviewPage from './pages/AdminChapterReviewPage';
 import AdminLessonEditorPage from './pages/AdminLessonEditorPage';
 import { AdminRoute } from './components/AdminRoute';
 import AccessibilityGuidePage from './pages/AccessibilityGuidePage';
-//import { AuthProvider } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 import { VoiceAgentProvider } from './components/VoiceAgentProvider';
 import { VoiceAgentControls } from './components/VoiceAgentControls';
 import { AccessibilityProvider } from './components/accessibility/AccessibilityProvider';
@@ -28,61 +28,63 @@ function App() {
   return (
     <Router>
       <AccessibilityProvider>
-        <LanguageProvider>
-          <VoiceAgentProvider>
-            <a href="#main-content" className="skip-link">Skip to content</a>
-            <main id="main-content">
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/signup" element={<SignUpPage />} />
-                <Route path="/parse" element={<UploadPage />} />
-                <Route path="/parse/review" element={<ChapterReviewPage />} />
-                <Route path="/parse/result" element={<ParseResultPage />} />
-                <Route
-                  path="/setup"
-                  element={
-                    <ProtectedRoute>
-                      <UserSetupPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute requireSetup={true}>
-                      <Dashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                {/* Chapter page - shows sections within a chapter (structured style) */}
-                <Route
-                  path="/:classId/:subjectId/:chapterSlug"
-                  element={<ChapterPage />}
-                />
-                {/* Microsection page - individual content (article, video, quiz, practice) */}
-                <Route
-                  path="/:classId/:subjectId/:chapterSlug/:sectionSlug/:microsectionId"
-                  element={<MicrosectionPage />}
-                />
-                {/* Legacy lesson page - fallback */}
-                <Route
-                  path="/:classId/:subjectId/:unit/lesson"
-                  element={<LessonPage />}
-                />
-                {/* Admin Routes - Protected */}
-                <Route path="/admin" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
-                <Route path="/admin/upload" element={<AdminRoute><AdminUploadPage /></AdminRoute>} />
-                <Route path="/admin/review" element={<AdminRoute><AdminChapterReviewPage /></AdminRoute>} />
-                <Route path="/admin/editor" element={<AdminRoute><AdminLessonEditorPage /></AdminRoute>} />
-                <Route path="/admin/editor/:lessonId" element={<AdminRoute><AdminLessonEditorPage /></AdminRoute>} />
-                <Route path="/accessibility-guide" element={<AccessibilityGuidePage />} />
-              </Routes>
-            </main>
-            <GlobalControlsBar />
-            <VoiceAgentControls />
-          </VoiceAgentProvider>
-        </LanguageProvider>
+        <AuthProvider>
+          <LanguageProvider>
+            <VoiceAgentProvider>
+              <a href="#main-content" className="skip-link">Skip to content</a>
+              <main id="main-content">
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/signup" element={<SignUpPage />} />
+                  <Route path="/parse" element={<UploadPage />} />
+                  <Route path="/parse/review" element={<ChapterReviewPage />} />
+                  <Route path="/parse/result" element={<ParseResultPage />} />
+                  <Route
+                    path="/setup"
+                    element={
+                      <ProtectedRoute>
+                        <UserSetupPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ProtectedRoute requireSetup={true}>
+                        <Dashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* Chapter page - shows sections within a chapter (structured style) */}
+                  <Route
+                    path="/:classId/:subjectId/:chapterSlug"
+                    element={<ChapterPage />}
+                  />
+                  {/* Microsection page - individual content (article, video, quiz, practice) */}
+                  <Route
+                    path="/:classId/:subjectId/:chapterSlug/:sectionSlug/:microsectionId"
+                    element={<MicrosectionPage />}
+                  />
+                  {/* Legacy lesson page - fallback */}
+                  <Route
+                    path="/:classId/:subjectId/:unit/lesson"
+                    element={<LessonPage />}
+                  />
+                  {/* Admin Routes - Protected */}
+                  <Route path="/admin" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
+                  <Route path="/admin/upload" element={<AdminRoute><AdminUploadPage /></AdminRoute>} />
+                  <Route path="/admin/review" element={<AdminRoute><AdminChapterReviewPage /></AdminRoute>} />
+                  <Route path="/admin/editor" element={<AdminRoute><AdminLessonEditorPage /></AdminRoute>} />
+                  <Route path="/admin/editor/:lessonId" element={<AdminRoute><AdminLessonEditorPage /></AdminRoute>} />
+                  <Route path="/accessibility-guide" element={<AccessibilityGuidePage />} />
+                </Routes>
+              </main>
+              <GlobalControlsBar />
+              <VoiceAgentControls />
+            </VoiceAgentProvider>
+          </LanguageProvider>
+        </AuthProvider>
       </AccessibilityProvider>
     </Router>
   );
