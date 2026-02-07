@@ -23,9 +23,7 @@ services:
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       - key: FRONTEND_URL
-        plugin: render-frontend
-        property: url
-        sync: false # Or ask user to input if not deploying frontend on Render yet
+        sync: false # User must input their Vercel URL manually
       - key: NODE_ENV
         value: production
     autoDeploy: false
