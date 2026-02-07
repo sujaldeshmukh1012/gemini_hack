@@ -23,6 +23,7 @@ import storyV2Router from "./routes/story_v2.js";
 import brailleV2Router from "./routes/braille_v2.js";
 
 const app = express();
+app.set("trust proxy", 1); // Trust first proxy (Render load balancer)
 app.set("etag", false);
 
 // Health Check Endpoint
