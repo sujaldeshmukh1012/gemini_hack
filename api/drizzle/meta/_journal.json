@@ -5,43 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1768114306695,
-      "tag": "0000_clammy_puff_adder",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1769815850000,
-      "tag": "0001_story_assets",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1769815851000,
-      "tag": "0002_story_audio_assets",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1769815852000,
-      "tag": "0003_content_translations",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1769815853000,
-      "tag": "0004_versioned_content",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1770436491054,
-      "tag": "0005_ordinary_praxagora",
+      "when": 1770436995737,
+      "tag": "0000_narrow_devos",
       "breakpoints": true
     }
   ]
