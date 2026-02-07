@@ -183,8 +183,7 @@ accountsRouter.get(
 accountsRouter.get("/me", async (req, res) => {
   const user = req.user as User;
   if (!user) {
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-    return res.redirect(`${frontendUrl}/login`);
+    return res.status(401).json({ error: "Not authenticated" });
   }
   const userEntry = await db.select().from(users).where(eq(users.email, user.email)).limit(1);
   res.json({ user: userEntry[0] })
