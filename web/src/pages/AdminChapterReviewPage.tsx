@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import type { ChapterInfo, TOCSection, ParsedUnit, UnitLessons } from '../types';
 import { getFile, clearAllFiles } from '../utils/fileStorage';
+import { apiUrl } from '../utils/api';
 
 interface LocationState {
   chapters: ChapterInfo[];
@@ -33,11 +34,11 @@ function AdminChapterReviewPage() {
   const [subjectSlug, setSubjectSlug] = useState<string>('');
   const [curriculumName, setCurriculumName] = useState<string>('');
   const [gradeName, setGradeName] = useState<string>('');
-  
+
   const [expandedChapter, setExpandedChapter] = useState<number | null>(0);
   const [editingChapter, setEditingChapter] = useState<number | null>(null);
   const [editingSection, setEditingSection] = useState<{ chapterIdx: number; sectionIdx: number } | null>(null);
-  
+
   const [step, setStep] = useState<ImportStep>('review');
   const [parseProgress, setParseProgress] = useState(0);
   const [generateProgress, setGenerateProgress] = useState(0);
@@ -99,8 +100,8 @@ function AdminChapterReviewPage() {
   const updateSection = (chapterIndex: number, sectionIndex: number, updates: Partial<TOCSection>) => {
     const chapter = chapters[chapterIndex];
     if (!chapter.tocSections) return;
-    
-    const newSections = chapter.tocSections.map((sec, i) => 
+
+    const newSections = chapter.tocSections.map((sec, i) =>
       i === sectionIndex ? { ...sec, ...updates } : sec
     );
     updateChapter(chapterIndex, { tocSections: newSections });
@@ -109,10 +110,10 @@ function AdminChapterReviewPage() {
   const deleteSection = (chapterIndex: number, sectionIndex: number) => {
     const chapter = chapters[chapterIndex];
     if (!chapter.tocSections) return;
-    
+
     const newSections = chapter.tocSections.filter((_, i) => i !== sectionIndex);
-    updateChapter(chapterIndex, { 
-      tocSections: newSections.length > 0 ? newSections : null 
+    updateChapter(chapterIndex, {
+      tocSections: newSections.length > 0 ? newSections : null
     });
   };
 
@@ -154,7 +155,7 @@ function AdminChapterReviewPage() {
 
       const data = await parseResponse.json();
       setParsedUnits(data.units);
-      
+
       // Auto-proceed to lesson generation
       setTimeout(() => handleGenerateLessons(data.units), 500);
     } catch (err) {
@@ -206,15 +207,15 @@ function AdminChapterReviewPage() {
       } catch (fetchError: any) {
         clearInterval(progressInterval);
         clearTimeout(timeoutId);
-        
+
         if (fetchError.name === 'AbortError') {
           throw new Error('Request timed out after 30 minutes. Lesson generation is taking too long. Please try with fewer units or check the server logs.');
         }
-        
+
         if (fetchError.message?.includes('Failed to fetch') || fetchError.message?.includes('NetworkError')) {
           throw new Error('Network error: Could not connect to the server. Please check if the server is running and try again.');
         }
-        
+
         throw new Error(`Request failed: ${fetchError.message || 'Unknown error'}`);
       }
 
@@ -259,8 +260,8 @@ function AdminChapterReviewPage() {
       setTimeout(() => handleImport(units, lessons), 500);
     } catch (err) {
       console.error('Error in handleGenerateLessons:', err);
-      const errorMessage = err instanceof Error 
-        ? err.message 
+      const errorMessage = err instanceof Error
+        ? err.message
         : 'An error occurred during lesson generation. Please check the server logs.';
       setError(errorMessage);
       setStep('review');
@@ -312,27 +313,27 @@ function AdminChapterReviewPage() {
           headers: {
             'Content-Type': 'application/json',
           },
-        body: JSON.stringify({
-          classId,
-          subjectSlug,
-          subjectName,
-          units,
-          lessons, // Include generated lessons
-        }),
+          body: JSON.stringify({
+            classId,
+            subjectSlug,
+            subjectName,
+            units,
+            lessons, // Include generated lessons
+          }),
           signal: controller.signal,
         });
       } catch (fetchError: any) {
         clearInterval(progressInterval);
         clearTimeout(timeoutId);
-        
+
         if (fetchError.name === 'AbortError') {
           throw new Error('Import request timed out after 10 minutes. Please try again or check the server logs.');
         }
-        
+
         if (fetchError.message?.includes('Failed to fetch') || fetchError.message?.includes('NetworkError')) {
           throw new Error('Network error: Could not connect to the server. Please check if the server is running and try again.');
         }
-        
+
         throw new Error(`Import request failed: ${fetchError.message || 'Unknown error'}`);
       }
 
@@ -377,8 +378,8 @@ function AdminChapterReviewPage() {
       await clearAllFiles();
     } catch (err) {
       console.error('Error in handleImport:', err);
-      const errorMessage = err instanceof Error 
-        ? err.message 
+      const errorMessage = err instanceof Error
+        ? err.message
         : 'An error occurred during import. Please check the server logs.';
       setError(errorMessage);
       setStep('review');
@@ -393,7 +394,7 @@ function AdminChapterReviewPage() {
   // Success Screen
   if (step === 'done' && importResult) {
     const totalLessons = importResult.chapters.reduce((acc, c) => acc + c.lessonCount, 0);
-    
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-surface-50 via-accent-50/30 to-secondary-50/20 flex items-center justify-center p-6">
         <div className="bg-white rounded-2xl border border-surface-200 p-8 max-w-lg w-full text-center shadow-lg">
@@ -402,7 +403,7 @@ function AdminChapterReviewPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          
+
           <h1 className="text-2xl font-bold text-surface-900 mb-2">Import Successful!</h1>
           <p className="text-surface-600 mb-6">
             Content has been imported into the database.
@@ -450,24 +451,24 @@ function AdminChapterReviewPage() {
 
   // Progress Screen (Parsing, Generating, or Importing)
   if (step === 'parsing' || step === 'generating' || step === 'importing') {
-    const progress = step === 'parsing' 
-      ? parseProgress 
-      : step === 'generating' 
-        ? generateProgress 
+    const progress = step === 'parsing'
+      ? parseProgress
+      : step === 'generating'
+        ? generateProgress
         : importProgress;
-    
-    const title = step === 'parsing' 
-      ? 'Parsing Content...' 
+
+    const title = step === 'parsing'
+      ? 'Parsing Content...'
       : step === 'generating'
         ? 'Generating Lessons with AI...'
         : 'Importing to Database...';
-    
-    const description = step === 'parsing' 
+
+    const description = step === 'parsing'
       ? 'Extracting learning goals and sections from each chapter...'
       : step === 'generating'
         ? 'Using Gemini AI to create detailed lesson content for each section...'
         : 'Creating subjects, chapters, and lessons in the database...';
-    
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-surface-50 via-primary-50/30 to-secondary-50/20 flex items-center justify-center p-6">
         <div className="bg-white rounded-2xl border border-surface-200 p-8 max-w-md w-full text-center shadow-lg">
@@ -477,12 +478,12 @@ function AdminChapterReviewPage() {
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
           </div>
-          
+
           <h2 className="text-xl font-bold text-surface-900 mb-2">{title}</h2>
           <p className="text-surface-600 mb-6">{description}</p>
 
           <div className="w-full bg-surface-200 rounded-full h-3 mb-2">
-            <div 
+            <div
               className="h-3 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
@@ -512,7 +513,7 @@ function AdminChapterReviewPage() {
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button 
+              <button
                 onClick={() => navigate('/admin/upload')}
                 className="p-2 hover:bg-surface-100 rounded-lg transition-colors"
               >
@@ -559,7 +560,7 @@ function AdminChapterReviewPage() {
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
             {error}
-            <button 
+            <button
               onClick={() => setError(null)}
               className="ml-4 text-red-500 hover:text-red-700"
             >
@@ -571,19 +572,19 @@ function AdminChapterReviewPage() {
         {/* Chapters List */}
         <div className="space-y-4">
           {chapters.map((chapter, chapterIdx) => (
-            <div 
+            <div
               key={chapterIdx}
               className="bg-white rounded-xl border border-surface-200 overflow-hidden shadow-sm"
             >
               {/* Chapter Header */}
-              <div 
+              <div
                 className="p-4 flex items-center gap-4 cursor-pointer hover:bg-surface-50 transition-colors"
                 onClick={() => setExpandedChapter(expandedChapter === chapterIdx ? null : chapterIdx)}
               >
                 <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center text-primary-700 font-bold">
                   {chapterIdx + 1}
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   {editingChapter === chapterIdx ? (
                     <input
@@ -628,10 +629,10 @@ function AdminChapterReviewPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
-                  <svg 
+                  <svg
                     className={`w-5 h-5 text-surface-400 transition-transform ${expandedChapter === chapterIdx ? 'rotate-180' : ''}`}
-                    fill="none" 
-                    stroke="currentColor" 
+                    fill="none"
+                    stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -645,14 +646,14 @@ function AdminChapterReviewPage() {
                   {chapter.tocSections && chapter.tocSections.length > 0 ? (
                     <div className="space-y-2">
                       {chapter.tocSections.map((section, sectionIdx) => (
-                        <div 
+                        <div
                           key={sectionIdx}
                           className="flex items-center gap-3 p-3 bg-white rounded-lg border border-surface-200"
                         >
                           <span className="text-sm font-mono text-primary-600 w-12">
                             {section.sectionId}
                           </span>
-                          
+
                           {editingSection?.chapterIdx === chapterIdx && editingSection?.sectionIdx === sectionIdx ? (
                             <input
                               type="text"
@@ -666,7 +667,7 @@ function AdminChapterReviewPage() {
                           ) : (
                             <span className="flex-1 text-sm text-surface-700">{section.title}</span>
                           )}
-                          
+
                           <input
                             type="number"
                             value={section.page || ''}
@@ -675,7 +676,7 @@ function AdminChapterReviewPage() {
                             placeholder="Page"
                             min={1}
                           />
-                          
+
                           <button
                             onClick={() => setEditingSection({ chapterIdx, sectionIdx })}
                             className="p-1.5 hover:bg-surface-100 rounded text-surface-400 hover:text-surface-600"
@@ -700,7 +701,7 @@ function AdminChapterReviewPage() {
                       No sections found in TOC. Sections will be auto-generated during parsing.
                     </p>
                   )}
-                  
+
                   <button
                     onClick={() => addSection(chapterIdx)}
                     className="mt-3 w-full py-2 border-2 border-dashed border-surface-300 rounded-lg text-sm text-surface-500 hover:border-primary-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"

@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
+import { apiUrl } from '../utils/api';
 import { useNavigate } from 'react-router-dom';
-import type { 
-  CurriculumWithGrades, 
-  GradeEntity, 
+import type {
+  CurriculumWithGrades,
+  GradeEntity,
   SubjectEntity,
-  ChapterInfo 
+  ChapterInfo
 } from '../types';
 import { storeFile, clearAllFiles } from '../utils/fileStorage';
 
@@ -17,13 +18,13 @@ function AdminUploadPage() {
   const [selectedCurriculum, setSelectedCurriculum] = useState<CurriculumWithGrades | null>(null);
   const [selectedGrade, setSelectedGrade] = useState<GradeEntity | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<SubjectEntity | null>(null);
-  
+
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingCurricula, setIsLoadingCurricula] = useState(true);
-  
+
   const navigate = useNavigate();
 
   // Clear old files and fetch curricula/subjects on mount
@@ -31,19 +32,19 @@ function AdminUploadPage() {
     const initialize = async () => {
       // Clear any previously stored files to ensure fresh state
       await clearAllFiles();
-      
+
       try {
         const [curriculaRes, subjectsRes] = await Promise.all([
           fetch(apiUrl('/api/curriculum')),
           fetch(apiUrl('/api/admin/subjects'))
         ]);
-        
+
         if (!curriculaRes.ok) throw new Error('Failed to fetch curricula');
         if (!subjectsRes.ok) throw new Error('Failed to fetch subjects');
-        
+
         const curriculaData = await curriculaRes.json();
         const subjectsData = await subjectsRes.json();
-        
+
         setCurricula(curriculaData);
         setSubjects(subjectsData);
       } catch (err) {
@@ -122,7 +123,7 @@ function AdminUploadPage() {
 
       // Store file in IndexedDB (handles large files)
       await storeFile('adminUploadedPDF', file);
-      
+
       // Navigate to admin review page with state (no session storage for chapters)
       navigate('/admin/review', {
         state: {
@@ -237,11 +238,10 @@ function AdminUploadPage() {
                       setSelectedCurriculum(curriculum);
                       setSelectedGrade(null);
                     }}
-                    className={`p-4 rounded-xl border-2 text-left transition-all ${
-                      selectedCurriculum?.id === curriculum.id
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${selectedCurriculum?.id === curriculum.id
                         ? 'border-primary-500 bg-primary-50'
                         : 'border-surface-200 hover:border-primary-300 hover:bg-surface-50'
-                    }`}
+                      }`}
                   >
                     <p className="font-semibold text-surface-900">{curriculum.name}</p>
                     <p className="text-xs text-surface-500 mt-1">{curriculum.grades.length} grades</p>
@@ -261,11 +261,10 @@ function AdminUploadPage() {
                     <button
                       key={grade.id}
                       onClick={() => setSelectedGrade(grade)}
-                      className={`p-3 rounded-xl border-2 text-center transition-all ${
-                        selectedGrade?.id === grade.id
+                      className={`p-3 rounded-xl border-2 text-center transition-all ${selectedGrade?.id === grade.id
                           ? 'border-primary-500 bg-primary-50'
                           : 'border-surface-200 hover:border-primary-300 hover:bg-surface-50'
-                      }`}
+                        }`}
                     >
                       <p className="font-semibold text-surface-900">{grade.name}</p>
                     </button>
@@ -291,11 +290,10 @@ function AdminUploadPage() {
                       <button
                         key={subject.id}
                         onClick={() => setSelectedSubject(subject)}
-                        className={`p-4 rounded-xl border-2 text-left transition-all ${
-                          selectedSubject?.id === subject.id
+                        className={`p-4 rounded-xl border-2 text-left transition-all ${selectedSubject?.id === subject.id
                             ? 'border-primary-500 bg-primary-50'
                             : 'border-surface-200 hover:border-primary-300 hover:bg-surface-50'
-                        }`}
+                          }`}
                       >
                         <p className="font-semibold text-surface-900">{subject.name}</p>
                         <p className="text-xs text-surface-500 mt-1">{subject.slug}</p>
@@ -321,11 +319,10 @@ function AdminUploadPage() {
             <button
               onClick={() => setStep('upload')}
               disabled={!canProceedToUpload}
-              className={`w-full py-4 rounded-xl font-semibold text-lg transition-all ${
-                canProceedToUpload
+              className={`w-full py-4 rounded-xl font-semibold text-lg transition-all ${canProceedToUpload
                   ? 'bg-primary-600 text-white hover:bg-primary-700'
                   : 'bg-surface-200 text-surface-400 cursor-not-allowed'
-              }`}
+                }`}
             >
               Continue to Upload
             </button>
@@ -363,10 +360,10 @@ function AdminUploadPage() {
               onDrop={handleDrop}
               className={`
                 relative border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-200
-                ${isDragging 
-                  ? 'border-primary-500 bg-primary-50 scale-[1.02]' 
-                  : file 
-                    ? 'border-accent-400 bg-accent-50' 
+                ${isDragging
+                  ? 'border-primary-500 bg-primary-50 scale-[1.02]'
+                  : file
+                    ? 'border-accent-400 bg-accent-50'
                     : 'border-surface-300 bg-white hover:border-primary-400 hover:bg-primary-50/50'
                 }
                 ${isUploading ? 'pointer-events-none opacity-60' : ''}

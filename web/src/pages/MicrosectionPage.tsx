@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { apiUrl } from '../utils/api';
+import { apiUrl, API_BASE } from '../utils/api';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { MathText } from '../components/MathText';
@@ -445,7 +445,7 @@ export function MicrosectionPage() {
 
   // Accessibility state
   // Accessibility state
-  const { speak, stop, isPlaying } = useTextToSpeech();
+  const { speak, stop } = useTextToSpeech();
   const [voiceOverEnabled, setVoiceOverEnabled] = useState(false);
   const [storyModeEnabled, setStoryModeEnabled] = useState(false);
   const [highContrastEnabled, setHighContrastEnabled] = useState(false);
@@ -541,7 +541,7 @@ export function MicrosectionPage() {
     };
 
     // Braille Control Listener
-    const handleBrailleControl = (event: CustomEvent) => {
+    const handleBrailleControl = () => {
       handleBraille();
     };
 
@@ -660,7 +660,7 @@ export function MicrosectionPage() {
     setIsStoryLoading(true);
     setStoryError(null);
     try {
-      const response = await fetch('http://localhost:8000/api/story/generate', {
+      const response = await fetch(`${API_BASE}/api/story/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

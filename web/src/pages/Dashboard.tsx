@@ -121,7 +121,7 @@ function Dashboard() {
     return id;
   };
 
-  const totalChapters = subjectsWithChapters.reduce((sum, s) => sum + s.chapters.length, 0);
+  // const totalChapters = subjectsWithChapters.reduce((sum, s) => sum + s.chapters.length, 0);
 
   return (
     <div className="min-h-screen bg-slate-50">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { apiUrl } from '../utils/api';
 import type { ChapterInfo, TOCSection } from '../types';
 import { getFile } from '../utils/fileStorage';
 
@@ -17,7 +18,7 @@ function ChapterReviewPage() {
   useEffect(() => {
     const storedChapters = sessionStorage.getItem('parsedChapters');
     const storedFileName = sessionStorage.getItem('uploadedFileName');
-    
+
     if (!storedChapters) {
       navigate('/parse');
       return;
@@ -64,8 +65,8 @@ function ChapterReviewPage() {
   const updateSection = (chapterIndex: number, sectionIndex: number, updates: Partial<TOCSection>) => {
     const chapter = chapters[chapterIndex];
     if (!chapter.tocSections) return;
-    
-    const newSections = chapter.tocSections.map((sec, i) => 
+
+    const newSections = chapter.tocSections.map((sec, i) =>
       i === sectionIndex ? { ...sec, ...updates } : sec
     );
     updateChapter(chapterIndex, { tocSections: newSections });
@@ -74,10 +75,10 @@ function ChapterReviewPage() {
   const deleteSection = (chapterIndex: number, sectionIndex: number) => {
     const chapter = chapters[chapterIndex];
     if (!chapter.tocSections) return;
-    
+
     const newSections = chapter.tocSections.filter((_, i) => i !== sectionIndex);
-    updateChapter(chapterIndex, { 
-      tocSections: newSections.length > 0 ? newSections : null 
+    updateChapter(chapterIndex, {
+      tocSections: newSections.length > 0 ? newSections : null
     });
   };
 
@@ -118,7 +119,7 @@ function ChapterReviewPage() {
       }
 
       const data = await parseResponse.json();
-      
+
       // Store parsed content and navigate
       sessionStorage.setItem('parsedUnits', JSON.stringify(data.units));
       navigate('/parse/result');
@@ -135,7 +136,7 @@ function ChapterReviewPage() {
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button 
+              <button
                 onClick={() => navigate('/parse')}
                 className="p-2 hover:bg-surface-100 rounded-lg transition-colors"
               >
@@ -177,19 +178,19 @@ function ChapterReviewPage() {
         {/* Chapters List */}
         <div className="space-y-4">
           {chapters.map((chapter, chapterIdx) => (
-            <div 
+            <div
               key={chapterIdx}
               className="bg-white rounded-xl border border-surface-200 overflow-hidden shadow-sm"
             >
               {/* Chapter Header */}
-              <div 
+              <div
                 className="p-4 flex items-center gap-4 cursor-pointer hover:bg-surface-50 transition-colors"
                 onClick={() => setExpandedChapter(expandedChapter === chapterIdx ? null : chapterIdx)}
               >
                 <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center text-primary-700 font-bold">
                   {chapterIdx + 1}
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   {editingChapter === chapterIdx ? (
                     <input
@@ -234,10 +235,10 @@ function ChapterReviewPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
-                  <svg 
+                  <svg
                     className={`w-5 h-5 text-surface-400 transition-transform ${expandedChapter === chapterIdx ? 'rotate-180' : ''}`}
-                    fill="none" 
-                    stroke="currentColor" 
+                    fill="none"
+                    stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -251,14 +252,14 @@ function ChapterReviewPage() {
                   {chapter.tocSections && chapter.tocSections.length > 0 ? (
                     <div className="space-y-2">
                       {chapter.tocSections.map((section, sectionIdx) => (
-                        <div 
+                        <div
                           key={sectionIdx}
                           className="flex items-center gap-3 p-3 bg-white rounded-lg border border-surface-200"
                         >
                           <span className="text-sm font-mono text-primary-600 w-12">
                             {section.sectionId}
                           </span>
-                          
+
                           {editingSection?.chapterIdx === chapterIdx && editingSection?.sectionIdx === sectionIdx ? (
                             <input
                               type="text"
@@ -272,7 +273,7 @@ function ChapterReviewPage() {
                           ) : (
                             <span className="flex-1 text-sm text-surface-700">{section.title}</span>
                           )}
-                          
+
                           <input
                             type="number"
                             value={section.page || ''}
@@ -281,7 +282,7 @@ function ChapterReviewPage() {
                             placeholder="Page"
                             min={1}
                           />
-                          
+
                           <button
                             onClick={() => setEditingSection({ chapterIdx, sectionIdx })}
                             className="p-1.5 hover:bg-surface-100 rounded text-surface-400 hover:text-surface-600"
@@ -306,7 +307,7 @@ function ChapterReviewPage() {
                       No sections found in TOC. Sections will be auto-generated during parsing.
                     </p>
                   )}
-                  
+
                   <button
                     onClick={() => addSection(chapterIdx)}
                     className="mt-3 w-full py-2 border-2 border-dashed border-surface-300 rounded-lg text-sm text-surface-500 hover:border-primary-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
@@ -328,7 +329,7 @@ function ChapterReviewPage() {
                 <span className="text-sm text-surface-500">{Math.round(parseProgress)}%</span>
               </div>
               <div className="h-3 bg-surface-200 rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-gradient-to-r from-primary-500 to-secondary-500 transition-all duration-300"
                   style={{ width: `${parseProgress}%` }}
                 />

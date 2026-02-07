@@ -7,7 +7,7 @@ export class AudioRecorder extends EventEmitter {
   private audioContext?: AudioContext;
   private source?: MediaStreamAudioSourceNode;
   private recordingWorklet?: AudioWorkletNode;
-  private recording = false;
+  public recording = false;
   public sampleRate: number;
 
   constructor(sampleRate = 16000) {

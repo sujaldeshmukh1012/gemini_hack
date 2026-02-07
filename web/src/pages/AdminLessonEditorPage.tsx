@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { apiUrl } from '../utils/api';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { 
-  CurriculumWithGrades, 
-  SubjectWithChapters, 
-  ChapterEntity,
+import type {
+  CurriculumWithGrades,
+  SubjectWithChapters,
   LessonEntity,
   LessonContent,
   VideoContent,
@@ -31,19 +30,19 @@ const normalizeLessonContent = (content: Partial<LessonContent> | undefined): Le
 function AdminLessonEditorPage() {
   const navigate = useNavigate();
   const { lessonId } = useParams<{ lessonId?: string }>();
-  
+
   const [curricula, setCurricula] = useState<CurriculumWithGrades[]>([]);
   const [selectedCurriculumId, setSelectedCurriculumId] = useState<string>('');
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [selectedChapterId, setSelectedChapterId] = useState<string>('');
   const [subjectsWithChapters, setSubjectsWithChapters] = useState<SubjectWithChapters[]>([]);
-  
+
   const [lessons, setLessons] = useState<LessonEntity[]>([]);
   const [selectedLesson, setSelectedLesson] = useState<LessonEntity | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<EditorTab>('content');
-  
+
   const [lessonContent, setLessonContent] = useState<LessonContent>({
     introduction: '',
     coreConcepts: [],
@@ -54,21 +53,21 @@ function AdminLessonEditorPage() {
     images: [],
     notes: []
   });
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generatingImageFor, setGeneratingImageFor] = useState<number | null>(null);
-  
+
   // New chapter modal state
   const [showNewChapterModal, setShowNewChapterModal] = useState(false);
   const [newChapterName, setNewChapterName] = useState('');
   const [newChapterDescription, setNewChapterDescription] = useState('');
   const [isCreatingChapter, setIsCreatingChapter] = useState(false);
-  
+
   // Video upload state
   const [uploadingVideoFor, setUploadingVideoFor] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [_uploadProgress, setUploadProgress] = useState<number>(0);
 
   // Fetch curricula on mount
   useEffect(() => {
@@ -235,12 +234,12 @@ function AdminLessonEditorPage() {
       const payload = selectedLesson.id
         ? { content: newContent }
         : {
-            chapterId: selectedChapterId,
-            slug: selectedLesson.slug || `lesson-${Date.now()}`,
-            title: selectedLesson.title,
-            content: newContent,
-            sortOrder: selectedLesson.sortOrder || lessons.length + 1
-          };
+          chapterId: selectedChapterId,
+          slug: selectedLesson.slug || `lesson-${Date.now()}`,
+          title: selectedLesson.title,
+          content: newContent,
+          sortOrder: selectedLesson.sortOrder || lessons.length + 1
+        };
 
       const response = await fetch(url, {
         method,
@@ -310,9 +309,9 @@ function AdminLessonEditorPage() {
       const newChapter = await response.json();
 
       // Update local state with new chapter
-      setSubjectsWithChapters(prev => 
-        prev.map(s => 
-          s.id === selectedSubjectId 
+      setSubjectsWithChapters(prev =>
+        prev.map(s =>
+          s.id === selectedSubjectId
             ? { ...s, chapters: [...s.chapters, newChapter] }
             : s
         )
@@ -392,28 +391,28 @@ function AdminLessonEditorPage() {
 
   const handleVideoUpload = async (videoId: string, file: File) => {
     if (!file) return;
-    
+
     setUploadingVideoFor(videoId);
     setUploadProgress(0);
     setError(null);
-    
+
     try {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('lessonId', selectedLesson?.id || 'draft');
-      
+
       const response = await fetch(apiUrl('/api/upload/video'), {
         method: 'POST',
         body: formData,
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to upload video');
       }
-      
+
       const result = await response.json();
-      
+
       // Update video URL with the uploaded file URL
       updateVideo(videoId, { url: result.url });
       setUploadProgress(100);
@@ -578,7 +577,7 @@ function AdminLessonEditorPage() {
           <div className="col-span-3">
             <div className="bg-white rounded-xl border border-slate-200 p-4 sticky top-24">
               <h2 className="text-sm font-bold text-slate-500 uppercase mb-4">Select Target</h2>
-              
+
               {/* Curriculum */}
               <div className="mb-4">
                 <label className="block text-xs font-semibold text-slate-600 mb-2">Curriculum</label>
@@ -682,15 +681,14 @@ function AdminLessonEditorPage() {
                       <button
                         key={lesson.id}
                         onClick={() => {
-                            setSelectedLesson(lesson);
-                            setLessonContent(convertContentToLessonContent(lesson.content));
-                            setIsEditing(true);
-                          }}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                          selectedLesson?.id === lesson.id
-                            ? 'bg-blue-50 text-blue-700 font-medium'
-                            : 'hover:bg-slate-50 text-slate-700'
-                        }`}
+                          setSelectedLesson(lesson);
+                          setLessonContent(convertContentToLessonContent(lesson.content));
+                          setIsEditing(true);
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${selectedLesson?.id === lesson.id
+                          ? 'bg-blue-50 text-blue-700 font-medium'
+                          : 'hover:bg-slate-50 text-slate-700'
+                          }`}
                       >
                         {lesson.title}
                       </button>
@@ -756,11 +754,10 @@ function AdminLessonEditorPage() {
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`px-4 py-2 text-sm font-medium capitalize transition-colors ${
-                          activeTab === tab
-                            ? 'text-blue-600 border-b-2 border-blue-600'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
+                        className={`px-4 py-2 text-sm font-medium capitalize transition-colors ${activeTab === tab
+                          ? 'text-blue-600 border-b-2 border-blue-600'
+                          : 'text-slate-600 hover:text-slate-900'
+                          }`}
                       >
                         {tab}
                       </button>
@@ -868,7 +865,7 @@ function AdminLessonEditorPage() {
                                           setError('Please enter a diagram description first');
                                           return;
                                         }
-                                        
+
                                         try {
                                           setError(null);
                                           setGeneratingImageFor(index);
@@ -889,9 +886,9 @@ function AdminLessonEditorPage() {
                                           const data = await response.json();
                                           if (data.dataUrls && data.dataUrls.length > 0) {
                                             const updated = [...(lessonContent.coreConcepts || [])];
-                                            updated[index] = { 
-                                              ...concept, 
-                                              diagramImageUrl: data.dataUrls[0] 
+                                            updated[index] = {
+                                              ...concept,
+                                              diagramImageUrl: data.dataUrls[0]
                                             };
                                             setLessonContent({ ...lessonContent, coreConcepts: updated });
                                           }
@@ -930,8 +927,8 @@ function AdminLessonEditorPage() {
                                   />
                                   {concept.diagramImageUrl && (
                                     <div className="mt-2">
-                                      <img 
-                                        src={concept.diagramImageUrl} 
+                                      <img
+                                        src={concept.diagramImageUrl}
                                         alt={concept.conceptTitle}
                                         className="max-w-full h-auto rounded-lg border border-slate-300"
                                       />
@@ -1125,7 +1122,7 @@ function AdminLessonEditorPage() {
                               placeholder="Video Title"
                               className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                             />
-                            
+
                             {/* Video URL or Upload */}
                             <div className="space-y-2">
                               <label className="block text-sm font-medium text-slate-700">Video Source</label>
@@ -1149,11 +1146,10 @@ function AdminLessonEditorPage() {
                                     className="hidden"
                                     disabled={uploadingVideoFor === video.id}
                                   />
-                                  <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                    uploadingVideoFor === video.id
-                                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                      : 'bg-green-600 text-white hover:bg-green-700'
-                                  }`}>
+                                  <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${uploadingVideoFor === video.id
+                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                    : 'bg-green-600 text-white hover:bg-green-700'
+                                    }`}>
                                     {uploadingVideoFor === video.id ? (
                                       <>
                                         <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
@@ -1179,7 +1175,7 @@ function AdminLessonEditorPage() {
                                 </p>
                               )}
                             </div>
-                            
+
                             <textarea
                               value={video.description || ''}
                               onChange={(e) => updateVideo(video.id, { description: e.target.value })}
@@ -1187,7 +1183,7 @@ function AdminLessonEditorPage() {
                               rows={2}
                               className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                             />
-                            
+
                             {/* Video Preview */}
                             {video.url && (
                               <div className="mt-2">
@@ -1217,7 +1213,7 @@ function AdminLessonEditorPage() {
                                 )}
                               </div>
                             )}
-                            
+
                             <div className="flex justify-end">
                               <button
                                 onClick={() => deleteVideo(video.id)}

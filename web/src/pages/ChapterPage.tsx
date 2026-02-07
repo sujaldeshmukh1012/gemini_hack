@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiUrl } from '../utils/api';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams, useNavigate } from "react-router-dom";
+import { API_BASE } from "../utils/api";
 import { useAuth } from '../hooks/useAuth';
 import type { StructuredChapter, StructuredSection, Microsection, MicrosectionType, ArticleMicrosection } from '../types';
 import { extractArticleRawText } from '../utils/textExtractor';
@@ -162,7 +163,7 @@ export function ChapterPage() {
         throw new Error('No article content available for braille conversion.');
       }
 
-      const response = await fetch('http://localhost:8000/api/braille/convert', {
+      const response = await fetch(`${API_BASE}/api/braille/convert`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lesson: combinedText })

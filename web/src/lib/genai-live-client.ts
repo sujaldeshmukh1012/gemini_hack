@@ -68,7 +68,7 @@ export class GenAILiveClient extends EventEmitter<LiveClientEventTypes> {
     this._status = "connecting";
 
     const callbacks: LiveCallbacks = {
-      onopen: (...args) => {
+      onopen: (..._args) => {
         this.onopen();
       },
       onmessage: (message) => {
@@ -83,16 +83,16 @@ export class GenAILiveClient extends EventEmitter<LiveClientEventTypes> {
     };
 
     try {
-      
+
       this._session = await this.client.live.connect({
         model,
         config,
         callbacks,
       });
-      
+
       this._status = "connected";
 
-      
+
       return true;
     } catch (e: any) {
       console.error("[Gemini Live] Error connecting to GenAI Live:", {
@@ -119,7 +119,7 @@ export class GenAILiveClient extends EventEmitter<LiveClientEventTypes> {
   protected onopen() {
     this.log("client.open", "Connected");
     this.emit("open");
-    
+
     if (!this._session) {
       console.error('[Gemini Live] Session is null after onopen!');
     }
@@ -206,7 +206,7 @@ export class GenAILiveClient extends EventEmitter<LiveClientEventTypes> {
           this.emit("content", content);
           this.log(`server.content`, message);
         }
-          
+
       }
     } else {
       console.log("[Gemini Live] Received unmatched message:", message);
@@ -239,10 +239,10 @@ export class GenAILiveClient extends EventEmitter<LiveClientEventTypes> {
       hasAudio && hasVideo
         ? "audio + video"
         : hasAudio
-        ? "audio"
-        : hasVideo
-        ? "video"
-        : "unknown";
+          ? "audio"
+          : hasVideo
+            ? "video"
+            : "unknown";
     this.log(`client.realtimeInput`, message);
   }
 

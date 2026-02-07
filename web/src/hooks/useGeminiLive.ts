@@ -43,7 +43,7 @@ export function useGeminiLive(): UseLiveAPIResults {
   const [model, setModel] = useState<string>("gemini-2.5-flash-native-audio-preview-12-2025");
   const [config, setConfig] = useState<LiveConnectConfig>({});
   const [connected, setConnected] = useState(false);
-  const [setupComplete, setSetupComplete] = useState(false);
+  const [_setupComplete, setSetupComplete] = useState(false);
   const [volume, setVolume] = useState(0);
 
   useEffect(() => {
@@ -66,7 +66,7 @@ export function useGeminiLive(): UseLiveAPIResults {
       setConnected(true);
     };
 
-    const onClose = (event: CloseEvent) => {
+    const onClose = (_event: CloseEvent) => {
       setConnected(false);
       setSetupComplete(false);
     };
@@ -115,17 +115,17 @@ export function useGeminiLive(): UseLiveAPIResults {
       model,
       configKeys: Object.keys(config),
     });
-    
+
     if (!config || Object.keys(config).length === 0) {
       throw new Error("config has not been set");
     }
-    
+
     // Disconnect first if already connected
     if (client.status === "connected") {
       client.disconnect();
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    
+
     const success = await client.connect(model, config);
     if (success) {
     } else {

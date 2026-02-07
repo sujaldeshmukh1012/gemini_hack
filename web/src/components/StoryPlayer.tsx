@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { API_BASE } from "../utils/api";
 import type { StoryAsset, StorySlide, StoryAudioSlide } from '../types';
 import { useTextToSpeech } from '../hooks/useTextToSpeech';
 import { useAccessibility } from './accessibility/AccessibilityProvider';
@@ -39,7 +40,6 @@ export const StoryPlayer = ({
 
   const slides = story.slides || [];
   const currentSlide = slides[currentIndex];
-  const mediaBaseUrl = 'http://localhost:8000';
   const audioBySlideId = useMemo(() => {
     const map = new Map<string, StoryAudioSlide>();
     audioSlides.forEach((slide) => {
@@ -74,10 +74,10 @@ export const StoryPlayer = ({
       if (audio && audio.audioUrl) {
         if (audioRef.current) {
           const src = audio.audioUrl.startsWith('/media')
-            ? `${mediaBaseUrl}${audio.audioUrl}`
+            ? `${API_BASE}${audio.audioUrl}`
             : audio.audioUrl;
           audioRef.current.src = src;
-          audioRef.current.play().catch(() => {});
+          audioRef.current.play().catch(() => { });
         }
         return;
       }
@@ -159,7 +159,7 @@ export const StoryPlayer = ({
               setIsAutoPlaying(true);
               if (isPaused) resume();
               if (audioRef.current && currentAudio?.audioUrl) {
-                audioRef.current.play().catch(() => {});
+                audioRef.current.play().catch(() => { });
               }
             }}
             aria-label="Play narration"
@@ -187,7 +187,7 @@ export const StoryPlayer = ({
             <img
               src={
                 currentSlide.imageUrl.startsWith('/media')
-                  ? `${mediaBaseUrl}${currentSlide.imageUrl}`
+                  ? `${API_BASE}${currentSlide.imageUrl}`
                   : currentSlide.imageUrl
               }
               alt={currentSlide.caption}
