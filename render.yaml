@@ -1,13 +1,10 @@
 services:
-  # The Backend API Service
   - type: web
     name: gemini-hack-api
     runtime: node
-    # Point to the api directory
+    plan: free # Added this to ensure validation passes
     rootDir: api
-    # Build command matches what we discussed
     buildCommand: npm install && npm run build
-    # Start command matches package.json (includes migration)
     startCommand: npm start
     envVars:
       - key: DATABASE_URL
@@ -23,14 +20,13 @@ services:
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       - key: FRONTEND_URL
-        sync: false # User must input their Vercel URL manually
+        sync: false
       - key: NODE_ENV
         value: production
     autoDeploy: false
 
 databases:
-  # The Managed PostgreSQL Database
   - name: gemini-hack-db
     databaseName: geminidb
     user: geminiuser
-    plan: free # Can be upgraded later
+    plan: free
