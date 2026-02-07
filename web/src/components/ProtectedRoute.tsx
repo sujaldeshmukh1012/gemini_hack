@@ -18,7 +18,8 @@ export const ProtectedRoute = ({ children, requireSetup = false }: ProtectedRout
       if (!user) {
         // Debounce redirect to prevent race conditions during auth check
         timeout = setTimeout(() => {
-          navigate('/login');
+          // navigate('/login');
+          console.log('User not authenticated');
         }, 100);
       } else {
         setCanRender(true);
