@@ -46,20 +46,24 @@ app.use((req, res, next) => {
   });
   next();
 });
-// CORS configuration
+// CORS configuration - allow multiple origins
+const allowedOrigins = [
+  process.env.FRONTEND_URL || "http://localhost:5173",
+  "http://localhost:5173",
+  "https://gemini-hack-puce.vercel.app",
+].map(url => url.replace(/\/$/, '')); // Normalize by removing trailing slashes
+
 app.use(
   cors({
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-      const allowedOrigin = process.env.FRONTEND_URL || "http://localhost:5173";
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
 
-      // Compare origin with allowed origin (ignoring trailing slash)
-      if (allowedOrigin.replace(/\/$/, '') === origin.replace(/\/$/, '')) {
+      const normalizedOrigin = origin.replace(/\/$/, '');
+      if (allowedOrigins.includes(normalizedOrigin)) {
         return callback(null, true);
       } else {
-        // Log mismatch for debugging
-        console.log(`CORS blocked: Origin ${origin} does not match allowed ${allowedOrigin}`);
+        console.log(`CORS blocked: Origin ${origin} not in allowed list: ${allowedOrigins.join(', ')}`);
         return callback(new Error('Not allowed by CORS'));
       }
     },

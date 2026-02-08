@@ -89,9 +89,16 @@ function AdminLessonEditorPage() {
   // Fetch lessons when chapter is selected
   useEffect(() => {
     if (selectedChapterId) {
-      fetch(apiUrl(`/api/admin/lessons/${selectedChapterId}`))
+      fetch(apiUrl(`/api/admin/lessons/${selectedChapterId}`), { credentials: 'include' })
         .then(res => res.json())
-        .then(setLessons)
+        .then(data => {
+          if (data.error) {
+            setError(data.error);
+            setLessons([]);
+          } else {
+            setLessons(data);
+          }
+        })
         .catch(err => setError(err.message));
     }
   }, [selectedChapterId]);
@@ -141,7 +148,7 @@ function AdminLessonEditorPage() {
   // Load lesson if lessonId is provided
   useEffect(() => {
     if (lessonId) {
-      fetch(apiUrl(`/api/admin/lessons/lesson/${lessonId}`))
+      fetch(apiUrl(`/api/admin/lessons/lesson/${lessonId}`), { credentials: 'include' })
         .then(res => res.json())
         .then((lesson: LessonEntity) => {
           setSelectedLesson(lesson);
@@ -244,6 +251,7 @@ function AdminLessonEditorPage() {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload)
       });
 
@@ -258,7 +266,7 @@ function AdminLessonEditorPage() {
 
       // Refresh lessons list
       if (selectedChapterId) {
-        fetch(apiUrl(`/api/admin/lessons/${selectedChapterId}`)).then(res => res.json()).then(setLessons);
+        fetch(apiUrl(`/api/admin/lessons/${selectedChapterId}`), { credentials: 'include' }).then(res => res.json()).then(setLessons);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save lesson');
@@ -292,6 +300,7 @@ function AdminLessonEditorPage() {
       const response = await fetch(apiUrl('/api/admin/chapters'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           gradeSubjectId: selectedSubject.gradeSubjectId,
           slug,
@@ -872,6 +881,7 @@ function AdminLessonEditorPage() {
                                           const response = await fetch(apiUrl('/api/admin/generate-image'), {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' },
+                                            credentials: 'include',
                                             body: JSON.stringify({
                                               prompt: concept.diagramDescription,
                                               numberOfImages: 1

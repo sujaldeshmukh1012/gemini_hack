@@ -36,8 +36,9 @@ function AdminUploadPage() {
       try {
         const [curriculaRes, subjectsRes] = await Promise.all([
           fetch(apiUrl('/api/curriculum')),
-          fetch(apiUrl('/api/admin/subjects'))
+          fetch(apiUrl('/api/admin/subjects'), { credentials: 'include' })
         ]);
+
 
         if (!curriculaRes.ok) throw new Error('Failed to fetch curricula');
         if (!subjectsRes.ok) throw new Error('Failed to fetch subjects');
@@ -239,8 +240,8 @@ function AdminUploadPage() {
                       setSelectedGrade(null);
                     }}
                     className={`p-4 rounded-xl border-2 text-left transition-all ${selectedCurriculum?.id === curriculum.id
-                        ? 'border-primary-500 bg-primary-50'
-                        : 'border-surface-200 hover:border-primary-300 hover:bg-surface-50'
+                      ? 'border-primary-500 bg-primary-50'
+                      : 'border-surface-200 hover:border-primary-300 hover:bg-surface-50'
                       }`}
                   >
                     <p className="font-semibold text-surface-900">{curriculum.name}</p>
@@ -262,8 +263,8 @@ function AdminUploadPage() {
                       key={grade.id}
                       onClick={() => setSelectedGrade(grade)}
                       className={`p-3 rounded-xl border-2 text-center transition-all ${selectedGrade?.id === grade.id
-                          ? 'border-primary-500 bg-primary-50'
-                          : 'border-surface-200 hover:border-primary-300 hover:bg-surface-50'
+                        ? 'border-primary-500 bg-primary-50'
+                        : 'border-surface-200 hover:border-primary-300 hover:bg-surface-50'
                         }`}
                     >
                       <p className="font-semibold text-surface-900">{grade.name}</p>
@@ -291,8 +292,8 @@ function AdminUploadPage() {
                         key={subject.id}
                         onClick={() => setSelectedSubject(subject)}
                         className={`p-4 rounded-xl border-2 text-left transition-all ${selectedSubject?.id === subject.id
-                            ? 'border-primary-500 bg-primary-50'
-                            : 'border-surface-200 hover:border-primary-300 hover:bg-surface-50'
+                          ? 'border-primary-500 bg-primary-50'
+                          : 'border-surface-200 hover:border-primary-300 hover:bg-surface-50'
                           }`}
                       >
                         <p className="font-semibold text-surface-900">{subject.name}</p>
@@ -320,8 +321,8 @@ function AdminUploadPage() {
               onClick={() => setStep('upload')}
               disabled={!canProceedToUpload}
               className={`w-full py-4 rounded-xl font-semibold text-lg transition-all ${canProceedToUpload
-                  ? 'bg-primary-600 text-white hover:bg-primary-700'
-                  : 'bg-surface-200 text-surface-400 cursor-not-allowed'
+                ? 'bg-primary-600 text-white hover:bg-primary-700'
+                : 'bg-surface-200 text-surface-400 cursor-not-allowed'
                 }`}
             >
               Continue to Upload
